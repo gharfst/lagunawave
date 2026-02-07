@@ -1,22 +1,85 @@
-# lagunawave
+# LagunaWave
 
 Local, on-device dictation for macOS that turns speech into simulated keystrokes.
 
-## Goal
-Build a fast, privacy-preserving dictation app for macOS that can use local speech-to-text models (starting with Parakeet, but designed to support multiple engines over time).
+## Download
+- Grab the latest notarized build from GitHub Releases: [Latest Release](https://github.com/gharfst/lagunawave/releases/latest)
+- Drag `LagunaWave.app` into `/Applications`
+- On first run, LagunaWave walks you through **Accessibility** and **Microphone** permissions one at a time, then downloads the speech model
 
-## Status
-Scaffolding only. No functional code yet.
+## Quick Start (from source)
+1. Ensure Xcode Command Line Tools are installed: `xcode-select --install`
+2. Build: `scripts/build.sh`
+3. Run: `scripts/run.sh`
 
-## Planned features
-- Microphone capture
-- Pluggable local STT engines (Parakeet first)
-- Text output as simulated keystrokes
-- Push-to-talk and global hotkey
-- Menu bar control
+## Hotkeys (Default)
+- Push‑to‑talk: **Control + Option + Space** — hold to speak, release to type
+- Toggle dictation: **Control + Option + Shift + Space** — press to start, press again to stop
+- **Escape** cancels toggle dictation without transcribing
 
-## Why this exists
-To provide a lightweight, local alternative to cloud dictation tools.
+Both hotkeys are configurable in Settings.
+
+## Settings
+- **Microphone selection** — choose which input device to use
+- **Hotkey configuration** — push‑to‑talk and toggle dictation hotkeys
+- **Typing method** — choose how transcribed text is delivered to the target app:
+  - *Simulate Typing* — types characters via Unicode injection. Works in most native macOS apps.
+  - *Simulate Keypresses* — types via virtual key codes (US QWERTY). Works in VDI clients and remote desktops (Citrix, VMware Horizon, Microsoft Remote Desktop, etc.).
+  - *Paste* — pastes via clipboard (Cmd+V). Fastest option; clipboard is saved and restored automatically.
+- **Typing speed** — controls inter-keystroke delay (Instant / Fast / Natural / Relaxed). Applies to Simulate Typing and Simulate Keypresses modes.
+- **VDI app keywords** — comma-separated keywords to identify VDI/remote desktop apps (e.g., vmware, citrix, horizon). When a VDI app is focused, LagunaWave automatically switches to Simulate Keypresses and clicks to restore keyboard capture after typing.
+- **Feedback** — optional audio and haptic cues on start/stop
+
+## Permissions
+- **Microphone:** required for audio capture.
+- **Accessibility:** required to inject keystrokes. Enable in **System Settings → Privacy & Security → Accessibility**.
+
+If macOS says the app is “damaged or incomplete,” rebuild to apply an ad‑hoc signature and try again. If it still blocks, run:
+`xattr -dr com.apple.quarantine build/LagunaWave.app`
+
+## Model Download
+The first run downloads the Parakeet TDT v3 model (~2.5GB). Expect a short delay on first use.
+
+## Signing & Distribution
+For a smooth user experience (no Gatekeeper warnings), sign with a **Developer ID Application** certificate and notarize.
+
+1. Create a Developer ID certificate in Xcode: **Xcode → Settings → Accounts → Manage Certificates → + → Developer ID Application**.
+2. Find your signing identity:
+   `security find-identity -p codesigning -v`
+3. Build with that identity:
+   `CODESIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" scripts/build.sh`
+4. Install into `/Applications` (stable path helps Accessibility permissions stick):
+   `scripts/install.sh`
+
+### Notarization (recommended for public releases)
+1. Create an app-specific password: <https://appleid.apple.com/>
+2. Store credentials in the keychain (recommended):
+   `xcrun notarytool store-credentials "lagunawave-notary" --apple-id "you@example.com" --team-id "TEAMID" --password "app-specific-password"`
+3. Notarize and staple:
+   `CODESIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" NOTARYTOOL_PROFILE="lagunawave-notary" scripts/notarize.sh`
+
+The notarized zip will be at `build/LagunaWave.zip`.
+
+## Release Checklist (Best Practice)
+1. Bump version: `scripts/bump_version.sh 0.1.2`
+2. Build + notarize: `CODESIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" NOTARYTOOL_PROFILE="lagunawave-notary" scripts/release.sh`
+3. Upload `build/LagunaWave.zip` and `build/LagunaWave.sha256` to GitHub Releases.
+4. Update `CHANGELOG.md`.
+
+## Architecture
+- `AudioCapture` (AVAudioEngine) collects mic audio and resamples to 16 kHz mono.
+- `TranscriptionEngine` (FluidAudio + CoreML) performs local ASR with Parakeet TDT v3.
+- `HotKeyManager` (Carbon) handles global hotkeys.
+- `OverlayPanel` renders a non‑activating floating HUD with branding, status, and contextual hotkey hints.
+- `TextTyper` delivers text via CGEvent Unicode injection, virtual keycode simulation, or clipboard paste.
+- `TranscriptionHistory` persists the last 50 transcriptions for review and retype.
+
+## Roadmap
+- Add engine abstraction for multiple local STT backends
+- On‑device punctuation & formatting options
 
 ## License
-TBD
+MIT
+
+## Model License
+Parakeet TDT v3 model weights are provided by NVIDIA under CC BY 4.0. See the model card for details.

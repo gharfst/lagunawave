@@ -1,0 +1,137 @@
+@preconcurrency import AVFoundation
+import AudioToolbox
+import QuartzCore
+
+final class AudioCapture: @unchecked Sendable {
+    private let engine = AVAudioEngine()
+    private var isRunning = false
+    private var converter: AVAudioConverter?
+    private let outputFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 16_000, channels: 1, interleaved: false)!
+    private var samples = [Float]()
+    private let queue = DispatchQueue(label: "lagunawave.audio.buffer")
+    private var inputDeviceUID: String?
+    private var lastLevelUpdate: CFTimeInterval = 0
+    var onLevel: ((Float) -> Void)?
+
+    func setInputDevice(uid: String?) {
+        inputDeviceUID = uid
+    }
+
+    func start() -> Bool {
+        if isRunning { return true }
+        startEngine()
+        return isRunning
+    }
+
+    func stop() -> [Float] {
+        if isRunning {
+            engine.inputNode.removeTap(onBus: 0)
+            engine.stop()
+            isRunning = false
+        }
+        let output = queue.sync { samples }
+        queue.sync { samples.removeAll(keepingCapacity: true) }
+        let duration = Double(output.count) / outputFormat.sampleRate
+        Log.shared.write("AudioCapture stop: samples=\(output.count) duration=\(String(format: "%.2f", duration))s")
+        if let onLevel = onLevel {
+            DispatchQueue.main.async {
+                onLevel(0)
+            }
+        }
+        return output
+    }
+
+    private func startEngine() {
+        guard !isRunning else { return }
+        let input = engine.inputNode
+        setAudioUnitDeviceIfNeeded(input)
+        let format = input.outputFormat(forBus: 0)
+        Log.shared.write("AudioCapture engine start: inputRate=\(format.sampleRate) channels=\(format.channelCount)")
+        converter = AVAudioConverter(from: format, to: outputFormat)
+        queue.sync { samples.removeAll(keepingCapacity: true) }
+
+        input.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
+            guard let self = self, let converter = self.converter else { return }
+            let ratio = self.outputFormat.sampleRate / format.sampleRate
+            let outFrameCapacity = AVAudioFrameCount(Double(buffer.frameLength) * ratio) + 1
+            guard let outBuffer = AVAudioPCMBuffer(pcmFormat: self.outputFormat, frameCapacity: outFrameCapacity) else { return }
+
+            var error: NSError?
+            converter.convert(to: outBuffer, error: &error) { _, outStatus in
+                outStatus.pointee = .haveData
+                return buffer
+            }
+            if error != nil { return }
+            guard let channelData = outBuffer.floatChannelData else { return }
+            let frameLength = Int(outBuffer.frameLength)
+            let level = self.level(from: outBuffer)
+            self.emitLevel(level)
+
+            let chunk = Array(UnsafeBufferPointer(start: channelData[0], count: frameLength))
+            self.queue.async {
+                self.samples.append(contentsOf: chunk)
+            }
+        }
+        do {
+            engine.prepare()
+            try engine.start()
+            isRunning = true
+        } catch {
+            isRunning = false
+            Log.shared.write("AudioCapture engine start failed: \(error.localizedDescription)")
+        }
+    }
+
+    private func setAudioUnitDeviceIfNeeded(_ input: AVAudioInputNode) {
+        guard let uid = inputDeviceUID else { return }
+        guard let deviceID = AudioDeviceManager.deviceID(forUID: uid) else {
+            Log.shared.write("AudioCapture deviceID not found for uid=\(uid)")
+            return
+        }
+        guard let audioUnit = input.audioUnit else {
+            Log.shared.write("AudioCapture audioUnit unavailable")
+            return
+        }
+        var deviceIDVar = deviceID
+        let status = AudioUnitSetProperty(
+            audioUnit,
+            kAudioOutputUnitProperty_CurrentDevice,
+            kAudioUnitScope_Global,
+            0,
+            &deviceIDVar,
+            UInt32(MemoryLayout<AudioDeviceID>.size)
+        )
+        if status == noErr {
+            Log.shared.write("AudioCapture using deviceID=\(deviceID)")
+        } else {
+            Log.shared.write("AudioCapture set device failed: \(status)")
+        }
+    }
+
+    private func level(from buffer: AVAudioPCMBuffer) -> Float {
+        guard let channelData = buffer.floatChannelData else { return 0 }
+        let frameLength = Int(buffer.frameLength)
+        if frameLength == 0 { return 0 }
+        var sum: Float = 0
+        let samples = channelData[0]
+        for i in 0..<frameLength {
+            let v = samples[i]
+            sum += v * v
+        }
+        let rms = sqrt(sum / Float(frameLength))
+        if rms <= 0 { return 0 }
+        let db = 20 * log10(rms)
+        let normalized = (db + 50) / 50
+        return min(1, max(0, normalized))
+    }
+
+    private func emitLevel(_ level: Float) {
+        guard let onLevel = onLevel else { return }
+        let now = CACurrentMediaTime()
+        if now - lastLevelUpdate < 0.03 { return }
+        lastLevelUpdate = now
+        DispatchQueue.main.async {
+            onLevel(level)
+        }
+    }
+}
