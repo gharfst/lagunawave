@@ -596,7 +596,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate {
             return
         }
 
-        let clickPoint = CGPoint(x: bounds.midX, y: bounds.midY)
+        let clickPoint = CGPoint(x: bounds.minX + bounds.width * 0.8, y: bounds.minY + 12)
         Log.shared.write("Focus restore: VDI click at (\(Int(clickPoint.x)),\(Int(clickPoint.y))) size \(Int(bounds.width))x\(Int(bounds.height))")
 
         if let mouseMove = CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: clickPoint, mouseButton: .left) {
