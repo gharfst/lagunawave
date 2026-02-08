@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.4 - 2026-02-08
+- Microphone selection submenu in the menu bar for quick switching.
+- `scripts/setup.sh` interactive bootstrap script for new contributors.
+- Build script requires Metal Toolchain upfront (clearer error on missing prerequisites).
+- Resilient Metal shader compilation (non-fatal; MLX falls back to JIT).
+
 ## 0.1.3 - 2026-02-08
 - Tabbed settings layout with restore defaults.
 - Optional AI text cleanup using on-device LLM (Qwen3).
