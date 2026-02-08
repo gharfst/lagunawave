@@ -482,7 +482,7 @@ final class SettingsViewController: NSTabViewController {
     }
 
     @objc private func openLogFile() {
-        NSWorkspace.shared.open(Log.shared.logURL)
+        NSWorkspace.shared.open(FileLog.shared.currentFileURL)
     }
 
     @objc private func restoreDefaults() {

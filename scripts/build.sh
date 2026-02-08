@@ -70,6 +70,10 @@ if [ -f "$ROOT_DIR/Resources/AppIcon.icns" ]; then
   cp "$ROOT_DIR/Resources/AppIcon.icns" "$APP_DIR/Contents/Resources/AppIcon.icns"
 fi
 
+for png in "$ROOT_DIR/Resources/menubar_icon.png" "$ROOT_DIR/Resources/menubar_icon@2x.png"; do
+  [ -f "$png" ] && cp "$png" "$APP_DIR/Contents/Resources/"
+done
+
 # Stage to a temp directory for signing to avoid file-provider extended
 # attribute contamination (iCloud Drive, Dropbox, etc. re-add xattrs
 # immediately, which breaks codesign).

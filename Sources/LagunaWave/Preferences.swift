@@ -29,6 +29,16 @@ final class Preferences {
     static let defaultVDIPatterns = "vmware, horizon, citrix, omnissa, remote desktop, workspaces, parallels, xen"
 
     private init() {
+        defaults.register(defaults: [
+            Keys.audioCueEnabled: true,
+            Keys.hapticCueEnabled: true,
+            Keys.typingDelayMs: 15,
+            Keys.typingMethod: TypingMethod.simulateTyping.rawValue,
+            Keys.asrModelVersion: "v2",
+            Keys.llmCleanupEnabled: false,
+            Keys.llmCleanupModel: "standard",
+            Keys.vdiPatterns: Self.defaultVDIPatterns,
+        ])
         migrateLegacyHotKeyIfNeeded()
     }
 
@@ -54,79 +64,43 @@ final class Preferences {
     }
 
     var audioCueEnabled: Bool {
-        get {
-            if defaults.object(forKey: Keys.audioCueEnabled) == nil { return true }
-            return defaults.bool(forKey: Keys.audioCueEnabled)
-        }
-        set {
-            defaults.set(newValue, forKey: Keys.audioCueEnabled)
-        }
+        get { defaults.bool(forKey: Keys.audioCueEnabled) }
+        set { defaults.set(newValue, forKey: Keys.audioCueEnabled) }
     }
 
     var hapticCueEnabled: Bool {
-        get {
-            if defaults.object(forKey: Keys.hapticCueEnabled) == nil { return true }
-            return defaults.bool(forKey: Keys.hapticCueEnabled)
-        }
-        set {
-            defaults.set(newValue, forKey: Keys.hapticCueEnabled)
-        }
+        get { defaults.bool(forKey: Keys.hapticCueEnabled) }
+        set { defaults.set(newValue, forKey: Keys.hapticCueEnabled) }
     }
 
     var typingDelayMs: Int {
-        get {
-            if defaults.object(forKey: Keys.typingDelayMs) == nil { return 15 }
-            return defaults.integer(forKey: Keys.typingDelayMs)
-        }
-        set {
-            defaults.set(newValue, forKey: Keys.typingDelayMs)
-        }
+        get { defaults.integer(forKey: Keys.typingDelayMs) }
+        set { defaults.set(newValue, forKey: Keys.typingDelayMs) }
     }
 
     var typingMethod: TypingMethod {
-        get {
-            if defaults.object(forKey: Keys.typingMethod) == nil { return .simulateTyping }
-            return TypingMethod(rawValue: defaults.integer(forKey: Keys.typingMethod)) ?? .simulateTyping
-        }
-        set {
-            defaults.set(newValue.rawValue, forKey: Keys.typingMethod)
-        }
+        get { TypingMethod(rawValue: defaults.integer(forKey: Keys.typingMethod)) ?? .simulateTyping }
+        set { defaults.set(newValue.rawValue, forKey: Keys.typingMethod) }
     }
 
     var asrModelVersion: String {
-        get {
-            if defaults.object(forKey: Keys.asrModelVersion) == nil { return "v2" }
-            return defaults.string(forKey: Keys.asrModelVersion) ?? "v2"
-        }
+        get { defaults.string(forKey: Keys.asrModelVersion) ?? "v2" }
         set { defaults.set(newValue, forKey: Keys.asrModelVersion) }
     }
 
     var llmCleanupEnabled: Bool {
-        get {
-            if defaults.object(forKey: Keys.llmCleanupEnabled) == nil { return false }
-            return defaults.bool(forKey: Keys.llmCleanupEnabled)
-        }
-        set {
-            defaults.set(newValue, forKey: Keys.llmCleanupEnabled)
-        }
+        get { defaults.bool(forKey: Keys.llmCleanupEnabled) }
+        set { defaults.set(newValue, forKey: Keys.llmCleanupEnabled) }
     }
 
     var llmCleanupModel: String {
-        get {
-            if defaults.object(forKey: Keys.llmCleanupModel) == nil { return "standard" }
-            return defaults.string(forKey: Keys.llmCleanupModel) ?? "standard"
-        }
+        get { defaults.string(forKey: Keys.llmCleanupModel) ?? "standard" }
         set { defaults.set(newValue, forKey: Keys.llmCleanupModel) }
     }
 
     var vdiPatterns: String {
-        get {
-            if defaults.object(forKey: Keys.vdiPatterns) == nil { return Self.defaultVDIPatterns }
-            return defaults.string(forKey: Keys.vdiPatterns) ?? Self.defaultVDIPatterns
-        }
-        set {
-            defaults.set(newValue, forKey: Keys.vdiPatterns)
-        }
+        get { defaults.string(forKey: Keys.vdiPatterns) ?? Self.defaultVDIPatterns }
+        set { defaults.set(newValue, forKey: Keys.vdiPatterns) }
     }
 
     func restoreDefaults() {

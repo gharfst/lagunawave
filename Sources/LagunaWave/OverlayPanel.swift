@@ -6,6 +6,13 @@ private class NonActivatingPanel: NSPanel {
     override var canBecomeMain: Bool { false }
 }
 
+private class BorderView: NSView {
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        layer?.borderColor = NSColor.separatorColor.withAlphaComponent(0.35).cgColor
+    }
+}
+
 @MainActor
 final class OverlayPanel {
     private let panel: NSPanel
@@ -91,7 +98,7 @@ final class OverlayPanel {
             mainStack.bottomAnchor.constraint(equalTo: visualEffect.bottomAnchor, constant: -14)
         ])
 
-        container = NSView()
+        container = BorderView()
         container.wantsLayer = true
         container.layer?.cornerRadius = 16
         container.layer?.masksToBounds = true
@@ -213,10 +220,30 @@ final class OverlayPanel {
         let size = contentView.fittingSize
         panel.setContentSize(size)
 
-        let screenFrame = (NSScreen.main ?? NSScreen.screens.first)?.visibleFrame ?? NSRect(x: 0, y: 0, width: 800, height: 600)
+        let screen = screenForFrontmostWindow() ?? NSScreen.main ?? NSScreen.screens.first
+        let screenFrame = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 800, height: 600)
         let x = screenFrame.midX - size.width / 2
         let y = screenFrame.maxY - size.height - 60
         panel.setFrameOrigin(NSPoint(x: x, y: y))
+    }
+
+    /// Returns the screen containing the frontmost application's focused window.
+    private func screenForFrontmostWindow() -> NSScreen? {
+        guard let app = NSWorkspace.shared.frontmostApplication else { return nil }
+        let axApp = AXUIElementCreateApplication(app.processIdentifier)
+
+        var focusedWindow: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(axApp, kAXFocusedWindowAttribute as CFString, &focusedWindow) == .success,
+              let window = focusedWindow else { return nil }
+
+        var positionValue: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(window as! AXUIElement, kAXPositionAttribute as CFString, &positionValue) == .success,
+              let pv = positionValue else { return nil }
+
+        var point = CGPoint.zero
+        AXValueGetValue(pv as! AXValue, .cgPoint, &point)
+
+        return NSScreen.screens.first { $0.frame.contains(point) }
     }
 
     private func setWaveformVisible(_ visible: Bool) {

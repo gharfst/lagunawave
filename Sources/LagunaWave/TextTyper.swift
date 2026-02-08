@@ -38,7 +38,7 @@ final class TextTyper {
             let extra = isSentenceBoundary(ch) ? punctuationDelayMs : 0
             sleepMs(perCharDelayMs + extra)
         }
-        Log.shared.write("TextTyper[unicode]: typed \(text.count) chars posted=\(posted) delay=\(perCharDelayMs)ms")
+        Log.typing("TextTyper[unicode]: typed \(text.count) chars posted=\(posted) delay=\(perCharDelayMs)ms")
         return posted
     }
 
@@ -92,9 +92,9 @@ final class TextTyper {
             sleepMs(perCharDelayMs + extra)
         }
         if skipped > 0 {
-            Log.shared.write("TextTyper[keycodes/\(label)/\(tapLabel)]: skipped \(skipped) unmapped chars")
+            Log.typing("TextTyper[keycodes/\(label)/\(tapLabel)]: skipped \(skipped) unmapped chars")
         }
-        Log.shared.write("TextTyper[keycodes/\(label)/\(tapLabel)]: typed \(text.count - skipped)/\(text.count) chars posted=\(posted) delay=\(perCharDelayMs)ms")
+        Log.typing("TextTyper[keycodes/\(label)/\(tapLabel)]: typed \(text.count - skipped)/\(text.count) chars posted=\(posted) delay=\(perCharDelayMs)ms")
         return posted
     }
 
@@ -142,7 +142,7 @@ final class TextTyper {
         sleepMs(200)
 
         restorePasteboard(pasteboard, items: savedItems)
-        Log.shared.write("TextTyper[paste]: pasted \(text.count) chars success=\(success)")
+        Log.typing("TextTyper[paste]: pasted \(text.count) chars success=\(success)")
         return success
     }
 

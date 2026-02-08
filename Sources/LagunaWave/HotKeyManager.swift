@@ -27,7 +27,7 @@ final class HotKeyManager {
             guard let hotKey = hotKeys[kind] else { continue }
             let signature = "\(hotKey.keyCode):\(hotKey.modifiers)"
             if seen.contains(signature) {
-                Log.shared.write("HotKeyManager: duplicate hotkey for \(kind); skipping registration")
+                Log.hotkey("HotKeyManager: duplicate hotkey for \(kind); skipping registration")
                 continue
             }
             seen.insert(signature)

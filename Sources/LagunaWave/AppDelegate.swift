@@ -36,8 +36,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
     private var retypeEscapeMonitor: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        Log.shared.write("Launched LagunaWave")
-        Log.shared.write("Bundle path: \(Bundle.main.bundlePath)")
+        Log.general("Launched LagunaWave")
+        Log.general("Bundle path: \(Bundle.main.bundlePath)")
 
         setupStatusItem()
 
@@ -73,7 +73,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
     private func performFirstRunSetup() async {
         // Step 1: Accessibility permission
         let trusted = AXIsProcessTrusted()
-        Log.shared.write("Setup: accessibility trusted=\(trusted)")
+        Log.general("Setup: accessibility trusted=\(trusted)")
         if !trusted {
             await MainActor.run {
                 self.overlay.showMessage("Enable Accessibility…")
@@ -86,7 +86,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
             while !AXIsProcessTrusted() {
                 try? await Task.sleep(nanoseconds: 500_000_000) // check every 0.5s
             }
-            Log.shared.write("Setup: accessibility now trusted")
+            Log.general("Setup: accessibility now trusted")
             await MainActor.run {
                 self.overlay.showMessage("Accessibility enabled")
                 self.overlay.hide(after: 1.0)
@@ -96,7 +96,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
 
         // Step 2: Microphone permission
         let micStatus = AVCaptureDevice.authorizationStatus(for: .audio)
-        Log.shared.write("Setup: microphone status=\(micStatus.rawValue)")
+        Log.general("Setup: microphone status=\(micStatus.rawValue)")
         if micStatus == .notDetermined {
             await MainActor.run {
                 self.overlay.showMessage("Allow Microphone…")
@@ -104,7 +104,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
             // Brief pause so user sees the overlay before the system dialog appears
             try? await Task.sleep(nanoseconds: 300_000_000)
             let granted = await AVCaptureDevice.requestAccess(for: .audio)
-            Log.shared.write("Setup: microphone granted=\(granted)")
+            Log.general("Setup: microphone granted=\(granted)")
             if granted {
                 await MainActor.run {
                     self.overlay.showMessage("Microphone enabled")
@@ -126,13 +126,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
         do {
             try await transcriber.downloadAll()
             try await transcriber.prepare()
-            Log.shared.write("Setup: models ready")
+            Log.general("Setup: models ready")
             await MainActor.run {
                 self.overlay.showMessage("Ready")
                 self.overlay.hide(after: 1.5)
             }
         } catch {
-            Log.shared.write("Setup: model download failed: \(error.localizedDescription)")
+            Log.general("Setup: model download failed: \(error.localizedDescription)")
             await MainActor.run {
                 self.overlay.showMessage("Model download failed")
                 self.overlay.hide(after: 2.0)
@@ -143,7 +143,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
     func hotKeyPressed(kind: HotKeyKind) {
         if isListening {
             if listeningMode == .toggle, kind == .toggle {
-                Log.shared.write("Toggle hotkey pressed: stop listening")
+                Log.general("Toggle hotkey pressed: stop listening")
                 finishListening(reason: "toggle")
             }
             return
@@ -159,7 +159,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
 
     func hotKeyReleased(kind: HotKeyKind) {
         guard isListening, listeningMode == .pushToTalk, kind == .pushToTalk else { return }
-        Log.shared.write("Push-to-talk released: stop listening")
+        Log.general("Push-to-talk released: stop listening")
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
             self?.finishListening(reason: "push-release")
         }
@@ -167,7 +167,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
 
     private func startListening(mode: ListeningMode) {
         let status = AVCaptureDevice.authorizationStatus(for: .audio)
-        Log.shared.write("Start listening (\(mode)) mic status=\(status.rawValue)")
+        Log.general("Start listening (\(mode)) mic status=\(status.rawValue)")
         switch status {
         case .authorized:
             beginListening(mode: mode)
@@ -213,7 +213,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
             AVCaptureDevice.requestAccess(for: .audio) { granted in
                 Task { @MainActor in
                     guard let self = self else { return }
-                    Log.shared.write("Microphone access granted=\(granted)")
+                    Log.general("Microphone access granted=\(granted)")
                     if granted {
                         self.beginListening(mode: mode)
                     } else {
@@ -232,12 +232,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
             lastSpeechTime = now
         }
         if let lastSpeechTime, now - lastSpeechTime >= toggleSilenceTimeout {
-            Log.shared.write("Toggle stop: silence timeout")
+            Log.general("Toggle stop: silence timeout")
             finishListening(reason: "silence")
             return
         }
         if let toggleStartTime, now - toggleStartTime >= toggleMaxDuration {
-            Log.shared.write("Toggle stop: max duration")
+            Log.general("Toggle stop: max duration")
             finishListening(reason: "max-duration")
         }
     }
@@ -252,7 +252,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
 
         let samples = audio.stop()
         playFeedback(start: false)
-        Log.shared.write("Finish listening (\(reason)): captured \(samples.count) samples")
+        Log.general("Finish listening (\(reason)): captured \(samples.count) samples")
         if samples.isEmpty {
             overlay.showMessage("No speech detected")
             overlay.hide(after: 0.8)
@@ -272,7 +272,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
                 let trimmed = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
 
                 let preview = String(trimmed.prefix(160))
-                Log.shared.write("Transcript length=\(trimmed.count) preview=\"\(preview)\"")
+                Log.transcription("Transcript length=\(trimmed.count) preview=\"\(preview)\"")
                 if trimmed.isEmpty {
                     await MainActor.run {
                         self.overlay.showMessage("No speech detected")
@@ -288,9 +288,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
                     await MainActor.run { self.overlay.showCleaningUp(loading: !ready) }
                     do {
                         textToType = try await self.cleanupEngine.cleanUp(text: trimmed)
-                        Log.shared.write("Cleanup result length=\(textToType.count)")
+                        Log.cleanup("Cleanup result length=\(textToType.count)")
                     } catch {
-                        Log.shared.write("Cleanup failed, using raw: \(error.localizedDescription)")
+                        Log.cleanup("Cleanup failed, using raw: \(error.localizedDescription)")
                         textToType = trimmed
                     }
                 } else {
@@ -301,7 +301,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
                     TranscriptionHistory.shared.append(textToType)
                 }
                 let trusted = self.typer.isTrusted()
-                Log.shared.write("Accessibility trusted=\(trusted)")
+                Log.general("Accessibility trusted=\(trusted)")
                 if !trusted {
                     await MainActor.run {
                         self.overlay.showMessage("Enable Accessibility (LW menu)")
@@ -318,9 +318,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
                 let (delayMs, method) = await MainActor.run {
                     (Preferences.shared.typingDelayMs, self.effectiveTypingMethod())
                 }
-                Log.shared.write("Typing with method=\(method) delay=\(delayMs)ms")
+                Log.typing("Typing with method=\(method) delay=\(delayMs)ms")
                 let success = self.typer.typeText(textToType, method: method, delayMs: delayMs)
-                Log.shared.write("Typing posted=\(success)")
+                Log.typing("Typing posted=\(success)")
                 if !success {
                     await MainActor.run {
                         self.overlay.showMessage("Typing failed")
@@ -328,7 +328,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
                     }
                 }
             } catch {
-                Log.shared.write("Transcription failed: \(error.localizedDescription)")
+                Log.transcription("Transcription failed: \(error.localizedDescription)")
                 await MainActor.run {
                     self.overlay.showMessage("Transcription failed")
                     self.overlay.hide(after: 1.2)
@@ -339,7 +339,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
 
     private func cancelListening() {
         guard isListening else { return }
-        Log.shared.write("Listening cancelled (Escape)")
+        Log.general("Listening cancelled (Escape)")
         isListening = false
         listeningMode = nil
         lastSpeechTime = nil
@@ -372,7 +372,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
 
     private func setupStatusItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        item.button?.title = "LW"
+        if let icon = NSImage(named: "menubar_icon") {
+            icon.isTemplate = true
+            icon.size = NSSize(width: 18, height: 18)
+            item.button?.image = icon
+        } else {
+            item.button?.title = "LW"
+        }
 
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
         let menu = NSMenu()
@@ -456,7 +462,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
                     self.overlay.hide(after: 1.0)
                 }
             } catch {
-                Log.shared.write("Model switch failed: \(error.localizedDescription)")
+                Log.general("Model switch failed: \(error.localizedDescription)")
                 await MainActor.run {
                     self.overlay.showMessage("Model switch failed")
                     self.overlay.hide(after: 1.5)
@@ -536,7 +542,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
     private func completeRetypeFlow(_ text: String) {
         removeRetypeMonitors()
         overlay.hide()
-        Log.shared.write("Retype: click detected, typing \(text.count) chars")
+        Log.typing("Retype: click detected, typing \(text.count) chars")
 
         Task { [weak self] in
             guard let self = self else { return }
@@ -546,7 +552,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
                 (Preferences.shared.typingDelayMs, self.effectiveTypingMethod())
             }
             let success = self.typer.typeText(text, method: method, delayMs: delayMs)
-            Log.shared.write("Retype: typing posted=\(success)")
+            Log.typing("Retype: typing posted=\(success)")
         }
     }
 
@@ -568,7 +574,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
         guard let target = resolveLastExternalApp() else { return userMethod }
         let isVDI = Preferences.shared.isVDIApp(bundleID: target.bundleIdentifier, name: target.localizedName)
         if isVDI && userMethod == .simulateTyping {
-            Log.shared.write("VDI detected: overriding simulateTyping → simulateKeypresses")
+            Log.typing("VDI detected: overriding simulateTyping → simulateKeypresses")
             return .simulateKeypresses
         }
         return userMethod
@@ -590,7 +596,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
     /// exactly which window to click back into after typing.
     private func captureFocusedWindowBounds() {
         guard let app = NSWorkspace.shared.frontmostApplication else {
-            Log.shared.write("Focus capture: no frontmost app")
+            Log.general("Focus capture: no frontmost app")
             savedFocusWindowBounds = nil
             return
         }
@@ -601,24 +607,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
         var focusedWindow: CFTypeRef?
         let result = AXUIElementCopyAttributeValue(axApp, kAXFocusedWindowAttribute as CFString, &focusedWindow)
         guard result == .success, let window = focusedWindow else {
-            Log.shared.write("Focus capture: no focused window for \(appName) (AX result=\(result.rawValue))")
+            Log.general("Focus capture: no focused window for \(appName) (AX result=\(result.rawValue))")
             savedFocusWindowBounds = nil
             return
         }
 
+        // CFTypeRef downcasts always succeed at the Swift bridging level,
+        // so we use unconditional casts here and rely on return-value checks.
+        let axWindow = window as! AXUIElement
+
         var positionValue: CFTypeRef?
         var sizeValue: CFTypeRef?
-        AXUIElementCopyAttributeValue(window as! AXUIElement, kAXPositionAttribute as CFString, &positionValue)
-        AXUIElementCopyAttributeValue(window as! AXUIElement, kAXSizeAttribute as CFString, &sizeValue)
+        let posResult = AXUIElementCopyAttributeValue(axWindow, kAXPositionAttribute as CFString, &positionValue)
+        let sizeResult = AXUIElementCopyAttributeValue(axWindow, kAXSizeAttribute as CFString, &sizeValue)
 
         var position = CGPoint.zero
         var size = CGSize.zero
-        if let pv = positionValue { AXValueGetValue(pv as! AXValue, .cgPoint, &position) }
-        if let sv = sizeValue { AXValueGetValue(sv as! AXValue, .cgSize, &size) }
+        if posResult == .success, let pv = positionValue { AXValueGetValue(pv as! AXValue, .cgPoint, &position) }
+        if sizeResult == .success, let sv = sizeValue { AXValueGetValue(sv as! AXValue, .cgSize, &size) }
 
         let bounds = CGRect(origin: position, size: size)
         savedFocusWindowBounds = bounds
-        Log.shared.write("Focus capture: \(appName) focused window \(Int(size.width))x\(Int(size.height)) at (\(Int(position.x)),\(Int(position.y)))")
+        Log.general("Focus capture: \(appName) focused window \(Int(size.width))x\(Int(size.height)) at (\(Int(position.x)),\(Int(position.y)))")
     }
 
     /// Hides the overlay and restores focus to the target app.
@@ -629,7 +639,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
         await MainActor.run { self.overlay.hide() }
 
         guard let target = await MainActor.run(body: { self.resolveLastExternalApp() }) else {
-            Log.shared.write("Focus restore: no target app to activate")
+            Log.general("Focus restore: no target app to activate")
             return
         }
         let targetName = target.localizedName ?? "?"
@@ -638,7 +648,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
         let isVDI = await MainActor.run {
             Preferences.shared.isVDIApp(bundleID: targetBundle, name: targetName)
         }
-        Log.shared.write("Focus restore: target=\(targetName) bundle=\(targetBundle ?? "nil") isVDI=\(isVDI)")
+        Log.general("Focus restore: target=\(targetName) bundle=\(targetBundle ?? "nil") isVDI=\(isVDI)")
 
         // Step 1: Make target frontmost
         _ = await MainActor.run { target.activate() }
@@ -647,19 +657,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
         // Step 2: For VDI apps, click at center of saved focused window
         // to re-establish keyboard grab. Skip for regular apps.
         guard isVDI else {
-            Log.shared.write("Focus restore: not VDI, activate only")
+            Log.general("Focus restore: not VDI, activate only")
             return
         }
 
         guard let bounds = await MainActor.run(body: { self.savedFocusWindowBounds }),
               bounds.width > 0, bounds.height > 0 else {
-            Log.shared.write("Focus restore: VDI but no saved window bounds, skipping click")
+            Log.general("Focus restore: VDI but no saved window bounds, skipping click")
             try? await Task.sleep(nanoseconds: 150_000_000)
             return
         }
 
         let clickPoint = CGPoint(x: bounds.minX + bounds.width * 0.8, y: bounds.minY + 12)
-        Log.shared.write("Focus restore: VDI click at (\(Int(clickPoint.x)),\(Int(clickPoint.y))) size \(Int(bounds.width))x\(Int(bounds.height))")
+        Log.general("Focus restore: VDI click at (\(Int(clickPoint.x)),\(Int(clickPoint.y))) size \(Int(bounds.width))x\(Int(bounds.height))")
 
         if let mouseMove = CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: clickPoint, mouseButton: .left) {
             mouseMove.post(tap: .cghidEventTap)
@@ -673,6 +683,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
         }
         try? await Task.sleep(nanoseconds: 300_000_000)
 
-        Log.shared.write("Focus restore: VDI click sent")
+        Log.general("Focus restore: VDI click sent")
     }
 }

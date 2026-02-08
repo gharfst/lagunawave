@@ -2,6 +2,10 @@
 import AudioToolbox
 import QuartzCore
 
+// @unchecked Sendable: all mutable state (samples, isRunning, converter,
+// inputDeviceUID, lastLevelUpdate) is accessed only from `queue` or from
+// the caller's serial context (start/stop are not called concurrently).
+// Cannot use Mutex (requires macOS 15); DispatchQueue is the macOS 14 alternative.
 final class AudioCapture: @unchecked Sendable {
     private let engine = AVAudioEngine()
     private var isRunning = false
@@ -32,7 +36,7 @@ final class AudioCapture: @unchecked Sendable {
         let output = queue.sync { samples }
         queue.sync { samples.removeAll(keepingCapacity: true) }
         let duration = Double(output.count) / outputFormat.sampleRate
-        Log.shared.write("AudioCapture stop: samples=\(output.count) duration=\(String(format: "%.2f", duration))s")
+        Log.audio("AudioCapture stop: samples=\(output.count) duration=\(String(format: "%.2f", duration))s")
         if let onLevel = onLevel {
             DispatchQueue.main.async {
                 onLevel(0)
@@ -46,7 +50,7 @@ final class AudioCapture: @unchecked Sendable {
         let input = engine.inputNode
         setAudioUnitDeviceIfNeeded(input)
         let format = input.outputFormat(forBus: 0)
-        Log.shared.write("AudioCapture engine start: inputRate=\(format.sampleRate) channels=\(format.channelCount)")
+        Log.audio("AudioCapture engine start: inputRate=\(format.sampleRate) channels=\(format.channelCount)")
         converter = AVAudioConverter(from: format, to: outputFormat)
         queue.sync { samples.removeAll(keepingCapacity: true) }
 
@@ -78,18 +82,18 @@ final class AudioCapture: @unchecked Sendable {
             isRunning = true
         } catch {
             isRunning = false
-            Log.shared.write("AudioCapture engine start failed: \(error.localizedDescription)")
+            Log.audio("AudioCapture engine start failed: \(error.localizedDescription)")
         }
     }
 
     private func setAudioUnitDeviceIfNeeded(_ input: AVAudioInputNode) {
         guard let uid = inputDeviceUID else { return }
         guard let deviceID = AudioDeviceManager.deviceID(forUID: uid) else {
-            Log.shared.write("AudioCapture deviceID not found for uid=\(uid)")
+            Log.audio("AudioCapture deviceID not found for uid=\(uid)")
             return
         }
         guard let audioUnit = input.audioUnit else {
-            Log.shared.write("AudioCapture audioUnit unavailable")
+            Log.audio("AudioCapture audioUnit unavailable")
             return
         }
         var deviceIDVar = deviceID
@@ -102,9 +106,9 @@ final class AudioCapture: @unchecked Sendable {
             UInt32(MemoryLayout<AudioDeviceID>.size)
         )
         if status == noErr {
-            Log.shared.write("AudioCapture using deviceID=\(deviceID)")
+            Log.audio("AudioCapture using deviceID=\(deviceID)")
         } else {
-            Log.shared.write("AudioCapture set device failed: \(status)")
+            Log.audio("AudioCapture set device failed: \(status)")
         }
     }
 

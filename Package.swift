@@ -11,7 +11,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/FluidInference/FluidAudio.git", from: "0.12.0"),
-        .package(url: "https://github.com/ml-explore/mlx-swift-lm.git", branch: "main")
+        .package(url: "https://github.com/ml-explore/mlx-swift-lm.git", from: "2.30.3")
     ],
     targets: [
         .executableTarget(

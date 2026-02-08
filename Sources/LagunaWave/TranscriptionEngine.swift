@@ -1,5 +1,5 @@
 import Foundation
-import FluidAudio
+@preconcurrency import FluidAudio
 
 actor TranscriptionEngine {
     private var manager: AsrManager?
@@ -17,11 +17,11 @@ actor TranscriptionEngine {
     }
 
     func downloadAll() async throws {
-        Log.shared.write("TranscriptionEngine: downloading v2 model")
+        Log.transcription("TranscriptionEngine: downloading v2 model")
         try await AsrModels.download(version: .v2)
-        Log.shared.write("TranscriptionEngine: downloading v3 model")
+        Log.transcription("TranscriptionEngine: downloading v3 model")
         try await AsrModels.download(version: .v3)
-        Log.shared.write("TranscriptionEngine: both models downloaded")
+        Log.transcription("TranscriptionEngine: both models downloaded")
     }
 
     func prepare() async throws {
@@ -42,14 +42,14 @@ actor TranscriptionEngine {
 
         let task = Task {
             let start = Date()
-            Log.shared.write("TranscriptionEngine: loading model \(version == .v2 ? "v2" : "v3")")
+            Log.transcription("TranscriptionEngine: loading model \(version == .v2 ? "v2" : "v3")")
             let models = try await AsrModels.downloadAndLoad(version: version)
             let mgr = AsrManager(config: .default)
             try await mgr.initialize(models: models)
             manager = mgr
             loadedVersion = version
             let elapsed = Date().timeIntervalSince(start)
-            Log.shared.write("TranscriptionEngine: model ready (\(String(format: "%.2f", elapsed))s)")
+            Log.transcription("TranscriptionEngine: model ready (\(String(format: "%.2f", elapsed))s)")
         }
         loadingTask = task
         do {
@@ -71,7 +71,7 @@ actor TranscriptionEngine {
     func transcribe(samples: [Float]) async throws -> String {
         try await prepare()
         guard let manager = manager else { return "" }
-        Log.shared.write("TranscriptionEngine: transcribing \(samples.count) samples")
+        Log.transcription("TranscriptionEngine: transcribing \(samples.count) samples")
         let result = try await manager.transcribe(samples, source: .microphone)
         return result.text
     }
