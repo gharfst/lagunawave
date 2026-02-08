@@ -23,6 +23,22 @@ mkdir -p "$BIN_DIR" "$RES_DIR"
 
 cp "$BIN_SRC" "$BIN_DIR/$APP_NAME"
 
+# Compile MLX Metal shaders into metallib (swift build doesn't do this)
+MLX_METAL="$ROOT_DIR/.build/checkouts/mlx-swift/Source/Cmlx/mlx-generated/metal"
+if [ -d "$MLX_METAL" ]; then
+  echo "Compiling Metal shaders..."
+  AIR_DIR=$(mktemp -d)
+  for f in "$MLX_METAL"/*.metal "$MLX_METAL"/steel/attn/kernels/*.metal; do
+    [ -f "$f" ] || continue
+    base=$(basename "$f" .metal)
+    xcrun -sdk macosx metal -c "$f" -I "$MLX_METAL" -o "$AIR_DIR/$base.air" 2>/dev/null
+  done
+  xcrun metal-ar r "$AIR_DIR/default.metalar" "$AIR_DIR"/*.air 2>/dev/null
+  xcrun -sdk macosx metallib "$AIR_DIR/default.metalar" -o "$BIN_DIR/mlx.metallib"
+  rm -rf "$AIR_DIR"
+  echo "Metal shaders compiled"
+fi
+
 cp "$PLIST" "$APP_DIR/Contents/Info.plist"
 
 if [ -f "$ROOT_DIR/Resources/AppIcon.icns" ]; then

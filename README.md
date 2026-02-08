@@ -27,7 +27,7 @@ Both hotkeys are configurable in Settings.
   - *Simulate Keypresses* — types via virtual key codes (US QWERTY). Works in VDI clients and remote desktops (Citrix, VMware Horizon, Microsoft Remote Desktop, etc.).
   - *Paste* — pastes via clipboard (Cmd+V). Fastest option; clipboard is saved and restored automatically.
 - **Typing speed** — controls inter-keystroke delay (Instant / Fast / Natural / Relaxed). Applies to Simulate Typing and Simulate Keypresses modes.
-- **VDI app keywords** — comma-separated keywords to identify VDI/remote desktop apps (e.g., vmware, citrix, horizon). When a VDI app is focused, LagunaWave automatically switches to Simulate Keypresses and clicks to restore keyboard capture after typing.
+- **VDI app keywords** — comma-separated keywords to identify VDI/remote desktop apps (e.g., vmware, citrix, horizon). When a VDI app is focused, LagunaWave automatically switches to Simulate Keypresses. After typing, it clicks the VDI window's title bar to restore keyboard focus, since VDI clients typically lose focus after receiving simulated keystrokes.
 - **Feedback** — optional audio and haptic cues on start/stop
 
 ## Permissions
@@ -37,8 +37,33 @@ Both hotkeys are configurable in Settings.
 If macOS says the app is “damaged or incomplete,” rebuild to apply an ad‑hoc signature and try again. If it still blocks, run:
 `xattr -dr com.apple.quarantine build/LagunaWave.app`
 
-## Model Download
-The first run downloads the Parakeet TDT v3 model (~2.5GB). Expect a short delay on first use.
+## Speech Recognition Models
+LagunaWave ships with two NVIDIA Parakeet TDT models, selectable in **Settings → Models**:
+
+| Model | Languages | Size | Notes |
+|-------|-----------|------|-------|
+| **Parakeet TDT v2** (default) | English only | ~2.5 GB | Higher accuracy for English-only use |
+| **Parakeet TDT v3** | 25 languages | ~2.5 GB | Multilingual support; slightly lower English accuracy |
+
+The selected model is downloaded automatically on first use. Switching models downloads the new one if needed.
+
+## Text Cleanup (Post-Processing)
+LagunaWave can optionally run transcribed text through a local LLM to fix common speech-to-text errors before typing it out. The cleanup corrects:
+- Punctuation and capitalization
+- Filler words (um, uh, like, you know, etc.)
+- Common homophones (there/their/they're, your/you're, its/it's, etc.)
+
+All processing happens on-device — no data leaves your Mac.
+
+### Enabling text cleanup
+1. Open **Settings → Models**.
+2. Check **"Clean up dictated text with AI"**.
+3. Choose a cleanup model size:
+   - **Standard** (Qwen3 4B, ~2.5 GB) — better accuracy
+   - **Lightweight** (Qwen3 1.7B, ~1.3 GB) — faster, smaller download
+4. Click **Download Model** and wait for the download to complete.
+
+Once enabled, cleanup runs automatically after each transcription. If the cleanup model isn't downloaded yet, LagunaWave falls back to the raw transcription.
 
 ## Signing & Distribution
 For a smooth user experience (no Gatekeeper warnings), sign with a **Developer ID Application** certificate and notarize.
@@ -68,7 +93,8 @@ The notarized zip will be at `build/LagunaWave.zip`.
 
 ## Architecture
 - `AudioCapture` (AVAudioEngine) collects mic audio and resamples to 16 kHz mono.
-- `TranscriptionEngine` (FluidAudio + CoreML) performs local ASR with Parakeet TDT v3.
+- `TranscriptionEngine` (FluidAudio + CoreML) performs local ASR with Parakeet TDT v2 or v3.
+- `TextCleanupEngine` (MLXLLM) optionally cleans up transcribed text using an on-device LLM.
 - `HotKeyManager` (Carbon) handles global hotkeys.
 - `OverlayPanel` renders a non‑activating floating HUD with branding, status, and contextual hotkey hints.
 - `TextTyper` delivers text via CGEvent Unicode injection, virtual keycode simulation, or clipboard paste.

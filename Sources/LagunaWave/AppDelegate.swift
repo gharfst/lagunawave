@@ -14,6 +14,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate {
     private let audio = AudioCapture()
     private let typer = TextTyper()
     private let transcriber = TranscriptionEngine()
+    private var cleanupEngine: TextCleanupEngine { TextCleanupEngine.shared }
     private var isListening = false
     private var listeningMode: ListeningMode?
     private var lastSpeechTime: CFTimeInterval?
@@ -56,6 +57,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate {
         NotificationCenter.default.addObserver(self, selector: #selector(inputDeviceChanged(_:)), name: .inputDeviceChanged, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(handleRetypeTranscription(_:)), name: .retypeTranscription, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(handleModelChanged), name: .modelChanged, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(handleLLMCleanupModelChanged), name: .llmCleanupModelChanged, object: nil)
 
         NSWorkspace.shared.notificationCenter.addObserver(
             self,
@@ -157,7 +159,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate {
     func hotKeyReleased(kind: HotKeyKind) {
         guard isListening, listeningMode == .pushToTalk, kind == .pushToTalk else { return }
         Log.shared.write("Push-to-talk released: stop listening")
-        finishListening(reason: "push-release")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+            self?.finishListening(reason: "push-release")
+        }
     }
 
     private func startListening(mode: ListeningMode) {
@@ -275,8 +279,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate {
                     }
                     return
                 }
+
+                let textToType: String
+                let cleanupEnabled = await MainActor.run { Preferences.shared.llmCleanupEnabled }
+                if cleanupEnabled {
+                    let ready = await self.cleanupEngine.isReady()
+                    await MainActor.run { self.overlay.showCleaningUp(loading: !ready) }
+                    do {
+                        textToType = try await self.cleanupEngine.cleanUp(text: trimmed)
+                        Log.shared.write("Cleanup result length=\(textToType.count)")
+                    } catch {
+                        Log.shared.write("Cleanup failed, using raw: \(error.localizedDescription)")
+                        textToType = trimmed
+                    }
+                } else {
+                    textToType = trimmed
+                }
+
                 await MainActor.run {
-                    TranscriptionHistory.shared.append(trimmed)
+                    TranscriptionHistory.shared.append(textToType)
                 }
                 let trusted = self.typer.isTrusted()
                 Log.shared.write("Accessibility trusted=\(trusted)")
@@ -297,7 +318,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate {
                     (Preferences.shared.typingDelayMs, self.effectiveTypingMethod())
                 }
                 Log.shared.write("Typing with method=\(method) delay=\(delayMs)ms")
-                let success = self.typer.typeText(trimmed, method: method, delayMs: delayMs)
+                let success = self.typer.typeText(textToType, method: method, delayMs: delayMs)
                 Log.shared.write("Typing posted=\(success)")
                 if !success {
                     await MainActor.run {
@@ -406,6 +427,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate {
                     self.overlay.hide(after: 1.5)
                 }
             }
+        }
+    }
+
+    @objc private func handleLLMCleanupModelChanged() {
+        Task {
+            try? await cleanupEngine.reloadModel()
         }
     }
 

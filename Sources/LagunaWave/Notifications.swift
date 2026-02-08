@@ -7,4 +7,5 @@ extension Notification.Name {
     static let retypeTranscription = Notification.Name("LagunaWave.RetypeTranscription")
     static let historyDidChange = Notification.Name("LagunaWave.HistoryDidChange")
     static let modelChanged = Notification.Name("LagunaWave.ModelChanged")
+    static let llmCleanupModelChanged = Notification.Name("LagunaWave.LLMCleanupModelChanged")
 }

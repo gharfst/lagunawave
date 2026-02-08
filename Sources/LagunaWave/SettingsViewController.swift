@@ -1,7 +1,7 @@
 import AppKit
 
 @MainActor
-final class SettingsViewController: NSViewController {
+final class SettingsViewController: NSTabViewController {
     private let devicesPopUp = NSPopUpButton(frame: .zero, pullsDown: false)
     private let pushHotKeyRecorder = HotKeyRecorderView(frame: .zero)
     private let toggleHotKeyRecorder = HotKeyRecorderView(frame: .zero)
@@ -21,37 +21,47 @@ final class SettingsViewController: NSViewController {
     private let modelDescription = NSTextField(wrappingLabelWithString: "")
     private let audioCueToggle = NSButton(checkboxWithTitle: "Play sound when listening starts/stops", target: nil, action: nil)
     private let hapticCueToggle = NSButton(checkboxWithTitle: "Haptic feedback on start/stop", target: nil, action: nil)
+    private let cleanupToggle = NSButton(checkboxWithTitle: "Clean up dictated text with AI", target: nil, action: nil)
+    private let cleanupModelPopUp = NSPopUpButton(frame: .zero, pullsDown: false)
+    private let cleanupDescription = NSTextField(wrappingLabelWithString: "Fixes punctuation, capitalization, filler words, and homophones. Runs locally on-device.")
+    private let cleanupDownloadButton = NSButton(title: "Download Model", target: nil, action: nil)
+    private let cleanupProgress = NSProgressIndicator()
+    private let cleanupStatusLabel = NSTextField(labelWithString: "")
     private var devices: [AudioInputDevice] = []
 
-    override func loadView() {
-        view = NSView()
-        view.wantsLayer = true
-        view.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        tabStyle = .toolbar
 
-        let title = NSTextField(labelWithString: "Settings")
-        title.font = NSFont.systemFont(ofSize: 20, weight: .semibold)
+        configureControls()
 
+        addTab(label: "General", image: NSImage(systemSymbolName: "gearshape", accessibilityDescription: nil), view: makeGeneralView())
+        addTab(label: "Typing", image: NSImage(systemSymbolName: "keyboard", accessibilityDescription: nil), view: makeTypingView())
+        addTab(label: "Models", image: NSImage(systemSymbolName: "cpu", accessibilityDescription: nil), view: makeModelsView())
+        addTab(label: "Troubleshooting", image: NSImage(systemSymbolName: "wrench.and.screwdriver", accessibilityDescription: nil), view: makeTroubleshootingView())
+
+        loadPreferences()
+    }
+
+    override func tabView(_ tabView: NSTabView, didSelect tabViewItem: NSTabViewItem?) {
+        super.tabView(tabView, didSelect: tabViewItem)
+        view.window?.makeFirstResponder(nil)
+    }
+
+    private func addTab(label: String, image: NSImage?, view: NSView) {
+        let vc = NSViewController()
+        vc.view = view
+        let item = NSTabViewItem(viewController: vc)
+        item.label = label
+        item.image = image
+        addTabViewItem(item)
+    }
+
+    // MARK: - Tab Content Views
+
+    private func makeGeneralView() -> NSView {
         let micLabel = NSTextField(labelWithString: "Microphone")
         micLabel.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
-
-        devicesPopUp.translatesAutoresizingMaskIntoConstraints = false
-        devicesPopUp.target = self
-        devicesPopUp.action = #selector(deviceChanged)
-
-        let modelLabel = NSTextField(labelWithString: "Model")
-        modelLabel.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
-
-        modelPopUp.translatesAutoresizingMaskIntoConstraints = false
-        modelPopUp.addItems(withTitles: [
-            "Parakeet TDT v2 (English)",
-            "Parakeet TDT v3 (Multilingual)",
-        ])
-        modelPopUp.target = self
-        modelPopUp.action = #selector(modelChanged)
-        modelDescription.font = NSFont.systemFont(ofSize: 11)
-        modelDescription.textColor = .secondaryLabelColor
-        modelDescription.maximumNumberOfLines = 2
-        modelDescription.lineBreakMode = .byWordWrapping
 
         let hotkeyLabel = NSTextField(labelWithString: "Hotkeys")
         hotkeyLabel.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
@@ -64,69 +74,15 @@ final class SettingsViewController: NSViewController {
         toggleLabel.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
         toggleDescriptionLabel.textColor = .secondaryLabelColor
 
-        typingMethodLabel.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
-        typingMethodPopUp.translatesAutoresizingMaskIntoConstraints = false
-        typingMethodPopUp.addItems(withTitles: [
-            "Simulate Typing",
-            "Simulate Keypresses",
-            "Paste",
-        ])
-        typingMethodPopUp.target = self
-        typingMethodPopUp.action = #selector(typingMethodChanged)
-        typingMethodDescription.font = NSFont.systemFont(ofSize: 11)
-        typingMethodDescription.textColor = .secondaryLabelColor
-        typingMethodDescription.maximumNumberOfLines = 2
-        typingMethodDescription.lineBreakMode = .byWordWrapping
-
-        typingSpeedLabel.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
-        typingSpeedControl.segmentCount = speedLabels.count
-        for (i, label) in speedLabels.enumerated() {
-            typingSpeedControl.setLabel(label, forSegment: i)
-            typingSpeedControl.setWidth(80, forSegment: i)
-        }
-        typingSpeedControl.target = self
-        typingSpeedControl.action = #selector(typingSpeedChanged)
-
-        vdiPatternsLabel.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
-        vdiPatternsField.translatesAutoresizingMaskIntoConstraints = false
-        vdiPatternsField.placeholderString = Preferences.defaultVDIPatterns
-        vdiPatternsField.target = self
-        vdiPatternsField.action = #selector(vdiPatternsChanged)
-        vdiPatternsDescription.font = NSFont.systemFont(ofSize: 11)
-        vdiPatternsDescription.textColor = .secondaryLabelColor
-        vdiPatternsDescription.maximumNumberOfLines = 2
-        vdiPatternsDescription.lineBreakMode = .byWordWrapping
-
         let feedbackLabel = NSTextField(labelWithString: "Feedback")
         feedbackLabel.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
 
-        audioCueToggle.target = self
-        audioCueToggle.action = #selector(audioCueChanged)
-        hapticCueToggle.target = self
-        hapticCueToggle.action = #selector(hapticCueChanged)
-        let troubleshootingLabel = NSTextField(labelWithString: "Troubleshooting")
-        troubleshootingLabel.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
-
-        let accessibilityButton = NSButton(title: "Accessibility Settings…", target: self, action: #selector(openAccessibilitySettings))
-        accessibilityButton.bezelStyle = .rounded
-        let microphoneButton = NSButton(title: "Microphone Settings…", target: self, action: #selector(openMicrophoneSettings))
-        microphoneButton.bezelStyle = .rounded
-        let logButton = NSButton(title: "Open Log File", target: self, action: #selector(openLogFile))
-        logButton.bezelStyle = .rounded
-
-        let troubleshootingButtons = NSStackView(views: [accessibilityButton, microphoneButton, logButton])
-        troubleshootingButtons.orientation = .horizontal
-        troubleshootingButtons.spacing = 8
+        let restoreButton = NSButton(title: "Restore Defaults\u{2026}", target: self, action: #selector(restoreDefaults))
+        restoreButton.bezelStyle = .rounded
 
         let stack = NSStackView(views: [
-            title,
-            spacer(height: 8),
             micLabel,
             devicesPopUp,
-            spacer(height: 16),
-            modelLabel,
-            modelPopUp,
-            modelDescription,
             spacer(height: 16),
             hotkeyLabel,
             pushLabel,
@@ -137,6 +93,32 @@ final class SettingsViewController: NSViewController {
             toggleHotKeyRecorder,
             toggleDescriptionLabel,
             spacer(height: 16),
+            feedbackLabel,
+            audioCueToggle,
+            hapticCueToggle,
+            spacer(height: 16),
+            restoreButton
+        ])
+        configureStack(stack)
+        return wrapStack(stack)
+    }
+
+    private func makeTypingView() -> NSView {
+        typingMethodLabel.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
+        typingMethodDescription.font = NSFont.systemFont(ofSize: 11)
+        typingMethodDescription.textColor = .secondaryLabelColor
+        typingMethodDescription.maximumNumberOfLines = 2
+        typingMethodDescription.lineBreakMode = .byWordWrapping
+
+        typingSpeedLabel.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
+
+        vdiPatternsLabel.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
+        vdiPatternsDescription.font = NSFont.systemFont(ofSize: 11)
+        vdiPatternsDescription.textColor = .secondaryLabelColor
+        vdiPatternsDescription.maximumNumberOfLines = 2
+        vdiPatternsDescription.lineBreakMode = .byWordWrapping
+
+        let stack = NSStackView(views: [
             typingMethodLabel,
             typingMethodPopUp,
             typingMethodDescription,
@@ -146,30 +128,187 @@ final class SettingsViewController: NSViewController {
             spacer(height: 16),
             vdiPatternsLabel,
             vdiPatternsField,
-            vdiPatternsDescription,
-            spacer(height: 16),
-            feedbackLabel,
-            audioCueToggle,
-            hapticCueToggle,
-            spacer(height: 16),
-            troubleshootingLabel,
-            troubleshootingButtons
+            vdiPatternsDescription
         ])
+        configureStack(stack)
+
+        NSLayoutConstraint.activate([
+            vdiPatternsField.widthAnchor.constraint(equalToConstant: 340)
+        ])
+
+        return wrapStack(stack)
+    }
+
+    private func makeModelsView() -> NSView {
+        let privacyNote = NSTextField(wrappingLabelWithString: "All models run on-device. No data leaves your Mac.")
+        privacyNote.font = NSFont.systemFont(ofSize: 11)
+        privacyNote.textColor = .secondaryLabelColor
+
+        let modelLabel = NSTextField(labelWithString: "Speech-to-text")
+        modelLabel.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
+
+        modelDescription.font = NSFont.systemFont(ofSize: 11)
+        modelDescription.textColor = .secondaryLabelColor
+        modelDescription.maximumNumberOfLines = 2
+        modelDescription.lineBreakMode = .byWordWrapping
+
+        let cleanupLabel = NSTextField(labelWithString: "Text cleanup")
+        cleanupLabel.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
+
+        cleanupDescription.font = NSFont.systemFont(ofSize: 11)
+        cleanupDescription.textColor = .secondaryLabelColor
+        cleanupDescription.maximumNumberOfLines = 3
+        cleanupDescription.lineBreakMode = .byWordWrapping
+
+        cleanupProgress.style = .bar
+        cleanupProgress.isIndeterminate = false
+        cleanupProgress.minValue = 0
+        cleanupProgress.maxValue = 1
+        cleanupProgress.isHidden = true
+        cleanupProgress.translatesAutoresizingMaskIntoConstraints = false
+
+        cleanupStatusLabel.font = NSFont.systemFont(ofSize: 11)
+        cleanupStatusLabel.textColor = .secondaryLabelColor
+        cleanupStatusLabel.isHidden = true
+
+        let downloadRow = NSStackView(views: [cleanupDownloadButton, cleanupProgress, cleanupStatusLabel])
+        downloadRow.orientation = .horizontal
+        downloadRow.alignment = .centerY
+        downloadRow.spacing = 8
+
+        let stack = NSStackView(views: [
+            privacyNote,
+            spacer(height: 12),
+            modelLabel,
+            modelPopUp,
+            modelDescription,
+            spacer(height: 20),
+            cleanupLabel,
+            cleanupToggle,
+            cleanupModelPopUp,
+            cleanupDescription,
+            spacer(height: 6),
+            downloadRow
+        ])
+        configureStack(stack)
+
+        NSLayoutConstraint.activate([
+            cleanupProgress.widthAnchor.constraint(equalToConstant: 160)
+        ])
+
+        return wrapStack(stack)
+    }
+
+    private func makeTroubleshootingView() -> NSView {
+        let accessibilityButton = NSButton(title: "Accessibility Settings\u{2026}", target: self, action: #selector(openAccessibilitySettings))
+        accessibilityButton.bezelStyle = .rounded
+        let microphoneButton = NSButton(title: "Microphone Settings\u{2026}", target: self, action: #selector(openMicrophoneSettings))
+        microphoneButton.bezelStyle = .rounded
+        let logButton = NSButton(title: "Open Log File", target: self, action: #selector(openLogFile))
+        logButton.bezelStyle = .rounded
+
+        let stack = NSStackView(views: [
+            accessibilityButton,
+            microphoneButton,
+            logButton
+        ])
+        configureStack(stack)
+        return wrapStack(stack)
+    }
+
+    // MARK: - Layout Helpers
+
+    private func configureStack(_ stack: NSStackView) {
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 6
         stack.translatesAutoresizingMaskIntoConstraints = false
+    }
 
-        view.addSubview(stack)
-
+    private func wrapStack(_ stack: NSStackView) -> NSView {
+        let container = NSView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(stack)
         NSLayoutConstraint.activate([
-            stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
-            stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
-            stack.topAnchor.constraint(equalTo: view.topAnchor, constant: 24),
-            stack.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -24)
+            stack.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 24),
+            stack.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -24),
+            stack.topAnchor.constraint(equalTo: container.topAnchor, constant: 20),
+            stack.bottomAnchor.constraint(lessThanOrEqualTo: container.bottomAnchor, constant: -20),
+            container.widthAnchor.constraint(greaterThanOrEqualToConstant: 480)
         ])
+        return container
+    }
 
+    private func spacer(height: CGFloat) -> NSView {
+        let view = NSView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        view.heightAnchor.constraint(equalToConstant: height).isActive = true
+        return view
+    }
+
+    // MARK: - Configure Controls
+
+    private func configureControls() {
+        devicesPopUp.translatesAutoresizingMaskIntoConstraints = false
+        devicesPopUp.target = self
+        devicesPopUp.action = #selector(deviceChanged)
+
+        modelPopUp.translatesAutoresizingMaskIntoConstraints = false
+        modelPopUp.addItems(withTitles: [
+            "Parakeet TDT v2 (English)",
+            "Parakeet TDT v3 (Multilingual)",
+        ])
+        modelPopUp.target = self
+        modelPopUp.action = #selector(modelChanged)
+
+        typingMethodPopUp.translatesAutoresizingMaskIntoConstraints = false
+        typingMethodPopUp.addItems(withTitles: [
+            "Simulate Typing",
+            "Simulate Keypresses",
+            "Paste",
+        ])
+        typingMethodPopUp.target = self
+        typingMethodPopUp.action = #selector(typingMethodChanged)
+
+        typingSpeedControl.segmentCount = speedLabels.count
+        for (i, label) in speedLabels.enumerated() {
+            typingSpeedControl.setLabel(label, forSegment: i)
+            typingSpeedControl.setWidth(80, forSegment: i)
+        }
+        typingSpeedControl.target = self
+        typingSpeedControl.action = #selector(typingSpeedChanged)
+
+        vdiPatternsField.translatesAutoresizingMaskIntoConstraints = false
+        vdiPatternsField.placeholderString = Preferences.defaultVDIPatterns
+        vdiPatternsField.target = self
+        vdiPatternsField.action = #selector(vdiPatternsChanged)
+
+        audioCueToggle.target = self
+        audioCueToggle.action = #selector(audioCueChanged)
+        hapticCueToggle.target = self
+        hapticCueToggle.action = #selector(hapticCueChanged)
+
+        cleanupToggle.target = self
+        cleanupToggle.action = #selector(cleanupToggleChanged)
+
+        cleanupModelPopUp.translatesAutoresizingMaskIntoConstraints = false
+        cleanupModelPopUp.addItems(withTitles: [
+            "Standard (Qwen3 4B, ~2.5 GB)",
+            "Lightweight (Qwen3 1.7B, ~1.3 GB)",
+        ])
+        cleanupModelPopUp.target = self
+        cleanupModelPopUp.action = #selector(cleanupModelChanged)
+
+        cleanupDownloadButton.bezelStyle = .rounded
+        cleanupDownloadButton.target = self
+        cleanupDownloadButton.action = #selector(cleanupDownloadClicked)
+    }
+
+    // MARK: - Load Preferences
+
+    private func loadPreferences() {
         reloadDevices()
+
         pushHotKeyRecorder.onHotKeyChange = { hotKey in
             Preferences.shared.pushToTalkHotKey = hotKey
             NotificationCenter.default.post(name: .pushHotKeyChanged, object: hotKey)
@@ -196,16 +335,10 @@ final class SettingsViewController: NSViewController {
             .min(by: { abs($0.element - savedDelay) < abs($1.element - savedDelay) })?.offset ?? 2
 
         vdiPatternsField.stringValue = Preferences.shared.vdiPatterns
-        NSLayoutConstraint.activate([
-            vdiPatternsField.widthAnchor.constraint(equalToConstant: 340)
-        ])
-    }
 
-    private func spacer(height: CGFloat) -> NSView {
-        let view = NSView()
-        view.translatesAutoresizingMaskIntoConstraints = false
-        view.heightAnchor.constraint(equalToConstant: height).isActive = true
-        return view
+        cleanupToggle.state = Preferences.shared.llmCleanupEnabled ? .on : .off
+        cleanupModelPopUp.selectItem(at: Preferences.shared.llmCleanupModel == "lightweight" ? 1 : 0)
+        updateCleanupControlsEnabled()
     }
 
     private func reloadDevices() {
@@ -220,6 +353,8 @@ final class SettingsViewController: NSViewController {
             devicesPopUp.selectItem(at: 0)
         }
     }
+
+    // MARK: - Actions
 
     @objc private func deviceChanged() {
         let index = devicesPopUp.indexOfSelectedItem
@@ -289,6 +424,53 @@ final class SettingsViewController: NSViewController {
         typingSpeedLabel.textColor = relevant ? .labelColor : .tertiaryLabelColor
     }
 
+    @objc private func cleanupToggleChanged() {
+        Preferences.shared.llmCleanupEnabled = (cleanupToggle.state == .on)
+        updateCleanupControlsEnabled()
+    }
+
+    @objc private func cleanupModelChanged() {
+        let model = cleanupModelPopUp.indexOfSelectedItem == 1 ? "lightweight" : "standard"
+        Preferences.shared.llmCleanupModel = model
+        cleanupStatusLabel.isHidden = true
+        NotificationCenter.default.post(name: .llmCleanupModelChanged, object: nil)
+    }
+
+    @objc private func cleanupDownloadClicked() {
+        cleanupDownloadButton.isEnabled = false
+        cleanupProgress.isHidden = false
+        cleanupProgress.doubleValue = 0
+        cleanupStatusLabel.stringValue = "Downloading\u{2026}"
+        cleanupStatusLabel.isHidden = false
+
+        Task {
+            do {
+                try await TextCleanupEngine.shared.prepare { [weak self] progress in
+                    Task { @MainActor in
+                        self?.cleanupProgress.doubleValue = progress.fractionCompleted
+                    }
+                }
+                await MainActor.run {
+                    self.cleanupProgress.isHidden = true
+                    self.cleanupStatusLabel.stringValue = "Model ready"
+                    self.cleanupDownloadButton.isEnabled = true
+                }
+            } catch {
+                await MainActor.run {
+                    self.cleanupProgress.isHidden = true
+                    self.cleanupStatusLabel.stringValue = "Download failed"
+                    self.cleanupDownloadButton.isEnabled = true
+                }
+            }
+        }
+    }
+
+    private func updateCleanupControlsEnabled() {
+        let enabled = cleanupToggle.state == .on
+        cleanupModelPopUp.isEnabled = enabled
+        cleanupDownloadButton.isEnabled = enabled
+    }
+
     @objc private func openAccessibilitySettings() {
         guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") else { return }
         NSWorkspace.shared.open(url)
@@ -301,5 +483,26 @@ final class SettingsViewController: NSViewController {
 
     @objc private func openLogFile() {
         NSWorkspace.shared.open(Log.shared.logURL)
+    }
+
+    @objc private func restoreDefaults() {
+        let alert = NSAlert()
+        alert.messageText = "Restore Default Settings?"
+        alert.informativeText = "This will reset all settings to their defaults. This cannot be undone."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Restore Defaults")
+        alert.addButton(withTitle: "Cancel")
+
+        guard let window = view.window else { return }
+        alert.beginSheetModal(for: window) { [weak self] response in
+            guard response == .alertFirstButtonReturn else { return }
+            Preferences.shared.restoreDefaults()
+            self?.loadPreferences()
+            NotificationCenter.default.post(name: .pushHotKeyChanged, object: Preferences.shared.pushToTalkHotKey)
+            NotificationCenter.default.post(name: .toggleHotKeyChanged, object: Preferences.shared.toggleHotKey)
+            NotificationCenter.default.post(name: .modelChanged, object: nil)
+            NotificationCenter.default.post(name: .inputDeviceChanged, object: nil)
+            NotificationCenter.default.post(name: .llmCleanupModelChanged, object: nil)
+        }
     }
 }

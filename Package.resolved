@@ -1,5 +1,5 @@
 {
-  "originHash" : "11c6da0b94782f52ff35ded2427b77ca9ab619b9fbf2059a96d6a43b4d73319d",
+  "originHash" : "58392f4415b6a0dd433f8f8f42e7e7dfa12a6cd3a7d0dc2cfd1ac809878f5ede",
   "pins" : [
     {
       "identity" : "fluidaudio",
@@ -8,6 +8,24 @@
       "state" : {
         "revision" : "9fcdf2f32cd879f494826db0e4945e8cf1187a62",
         "version" : "0.12.0"
+      }
+    },
+    {
+      "identity" : "mlx-swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/ml-explore/mlx-swift",
+      "state" : {
+        "revision" : "4dccaeda1d83cf8697f235d2786c2d72ad4bb925",
+        "version" : "0.30.3"
+      }
+    },
+    {
+      "identity" : "mlx-swift-lm",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/ml-explore/mlx-swift-lm.git",
+      "state" : {
+        "branch" : "main",
+        "revision" : "2c700546340c37f275d23302163701b77c4dcbd9"
       }
     },
     {
@@ -26,6 +44,15 @@
       "state" : {
         "revision" : "d81197f35f41445bc10e94600795e68c6f5e94b0",
         "version" : "2.3.1"
+      }
+    },
+    {
+      "identity" : "swift-numerics",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-numerics",
+      "state" : {
+        "revision" : "0c0290ff6b24942dadb83a929ffaaa1481df04a2",
+        "version" : "1.1.1"
       }
     },
     {

@@ -133,6 +133,11 @@ final class OverlayPanel {
         updateUI(text: text, waveform: false, spinner: true, dotColor: .systemOrange)
     }
 
+    func showCleaningUp(loading: Bool) {
+        let text = loading ? "Loading cleanup model\u{2026}" : "Cleaning up text\u{2026}"
+        updateUI(text: text, waveform: false, spinner: true, dotColor: .systemPurple)
+    }
+
     func showTyping() {
         updateUI(text: "Typing…", waveform: false, spinner: false, dotColor: .systemBlue)
     }

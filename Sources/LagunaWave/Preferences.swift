@@ -22,6 +22,8 @@ final class Preferences {
         static let typingMethod = "typingMethod"
         static let vdiPatterns = "vdiPatterns"
         static let asrModelVersion = "asrModelVersion"
+        static let llmCleanupEnabled = "llmCleanupEnabled"
+        static let llmCleanupModel = "llmCleanupModel"
     }
 
     static let defaultVDIPatterns = "vmware, horizon, citrix, omnissa, remote desktop, workspaces, parallels, xen"
@@ -99,6 +101,24 @@ final class Preferences {
         set { defaults.set(newValue, forKey: Keys.asrModelVersion) }
     }
 
+    var llmCleanupEnabled: Bool {
+        get {
+            if defaults.object(forKey: Keys.llmCleanupEnabled) == nil { return false }
+            return defaults.bool(forKey: Keys.llmCleanupEnabled)
+        }
+        set {
+            defaults.set(newValue, forKey: Keys.llmCleanupEnabled)
+        }
+    }
+
+    var llmCleanupModel: String {
+        get {
+            if defaults.object(forKey: Keys.llmCleanupModel) == nil { return "standard" }
+            return defaults.string(forKey: Keys.llmCleanupModel) ?? "standard"
+        }
+        set { defaults.set(newValue, forKey: Keys.llmCleanupModel) }
+    }
+
     var vdiPatterns: String {
         get {
             if defaults.object(forKey: Keys.vdiPatterns) == nil { return Self.defaultVDIPatterns }
@@ -107,6 +127,20 @@ final class Preferences {
         set {
             defaults.set(newValue, forKey: Keys.vdiPatterns)
         }
+    }
+
+    func restoreDefaults() {
+        defaults.removeObject(forKey: Keys.inputDeviceUID)
+        defaults.removeObject(forKey: Keys.pushHotKeyData)
+        defaults.removeObject(forKey: Keys.toggleHotKeyData)
+        defaults.removeObject(forKey: Keys.audioCueEnabled)
+        defaults.removeObject(forKey: Keys.hapticCueEnabled)
+        defaults.removeObject(forKey: Keys.typingDelayMs)
+        defaults.removeObject(forKey: Keys.typingMethod)
+        defaults.removeObject(forKey: Keys.vdiPatterns)
+        defaults.removeObject(forKey: Keys.asrModelVersion)
+        defaults.removeObject(forKey: Keys.llmCleanupEnabled)
+        defaults.removeObject(forKey: Keys.llmCleanupModel)
     }
 
     func isVDIApp(bundleID: String?, name: String?) -> Bool {
