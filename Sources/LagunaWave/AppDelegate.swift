@@ -828,8 +828,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
         let clickPoint = CGPoint(x: bounds.minX + bounds.width * xFraction, y: bounds.minY + yOffset)
         Log.general("Focus restore: VDI click at (\(Int(clickPoint.x)),\(Int(clickPoint.y))) size \(Int(bounds.width))x\(Int(bounds.height)) fullScreen=\(isFullScreen)")
 
-        let originalMousePos = CGEvent(source: nil)?.location ?? clickPoint
-
         if let mouseMove = CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: clickPoint, mouseButton: .left) {
             mouseMove.post(tap: .cghidEventTap)
         }
@@ -842,10 +840,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
         }
         try? await Task.sleep(nanoseconds: 300_000_000)
 
-        if let mouseRestore = CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: originalMousePos, mouseButton: .left) {
-            mouseRestore.post(tap: .cghidEventTap)
-        }
-
-        Log.general("Focus restore: VDI click sent, cursor restored to (\(Int(originalMousePos.x)),\(Int(originalMousePos.y)))")
+        Log.general("Focus restore: VDI click sent")
     }
 }

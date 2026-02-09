@@ -3,7 +3,6 @@
 ## 0.1.8 - 2026-02-09
 - Smarter VDI focus click: detect full-screen vs windowed mode to avoid clicking the macOS title bar.
 - Windowed VDI click position adjusted (65% across) to better target the session area.
-- Restore mouse cursor to its original position after VDI focus click.
 - Removed premature GitHub Releases download section from README.
 
 ## 0.1.6 - 2026-02-09
