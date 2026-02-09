@@ -98,14 +98,14 @@ sign_metallibs() {
 if [ -z "${CODESIGN_IDENTITY:-}" ]; then
   echo "Signing: ad-hoc"
   sign_metallibs "-"
-  codesign --force --deep --sign - "$STAGE_APP"
+  codesign --force --sign - "$STAGE_APP"
 else
   echo "Signing: $CODESIGN_IDENTITY"
   sign_metallibs "$CODESIGN_IDENTITY"
   if [ -f "$ENTITLEMENTS" ]; then
-    codesign --force --deep --options runtime --timestamp --entitlements "$ENTITLEMENTS" --sign "$CODESIGN_IDENTITY" "$STAGE_APP"
+    codesign --force --options runtime --timestamp --entitlements "$ENTITLEMENTS" --sign "$CODESIGN_IDENTITY" "$STAGE_APP"
   else
-    codesign --force --deep --options runtime --timestamp --sign "$CODESIGN_IDENTITY" "$STAGE_APP"
+    codesign --force --options runtime --timestamp --sign "$CODESIGN_IDENTITY" "$STAGE_APP"
   fi
 fi
 

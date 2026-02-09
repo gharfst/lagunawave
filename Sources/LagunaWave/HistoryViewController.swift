@@ -7,6 +7,13 @@ final class HistoryViewController: NSViewController, NSTableViewDataSource, NSTa
     private let previewText = NSTextView()
     private let previewScroll = NSScrollView()
     private let previewTitle = NSTextField(labelWithString: "Transcription")
+    private let segmentedControl: NSSegmentedControl = {
+        let sc = NSSegmentedControl(labels: ["Cleaned", "Original"], trackingMode: .selectOne, target: nil, action: nil)
+        sc.selectedSegment = 0
+        sc.controlSize = .small
+        sc.translatesAutoresizingMaskIntoConstraints = false
+        return sc
+    }()
     private let previewContainer = NSView()
     private let typeButton = NSButton(title: "Type", target: nil, action: nil)
     private let copyButton = NSButton(title: "Copy", target: nil, action: nil)
@@ -106,9 +113,13 @@ final class HistoryViewController: NSViewController, NSTableViewDataSource, NSTa
         buttonBar.spacing = 8
         buttonBar.translatesAutoresizingMaskIntoConstraints = false
 
+        segmentedControl.target = self
+        segmentedControl.action = #selector(segmentChanged)
+
         let rightPane = NSView()
         rightPane.translatesAutoresizingMaskIntoConstraints = false
         rightPane.addSubview(previewTitle)
+        rightPane.addSubview(segmentedControl)
         rightPane.addSubview(previewContainer)
         rightPane.addSubview(buttonBar)
 
@@ -116,6 +127,9 @@ final class HistoryViewController: NSViewController, NSTableViewDataSource, NSTa
             previewTitle.topAnchor.constraint(equalTo: rightPane.topAnchor, constant: 10),
             previewTitle.leadingAnchor.constraint(equalTo: rightPane.leadingAnchor, constant: 10),
             previewTitle.trailingAnchor.constraint(equalTo: rightPane.trailingAnchor, constant: -10),
+
+            segmentedControl.topAnchor.constraint(equalTo: rightPane.topAnchor, constant: 8),
+            segmentedControl.leadingAnchor.constraint(equalTo: rightPane.leadingAnchor, constant: 10),
 
             previewContainer.topAnchor.constraint(equalTo: previewTitle.bottomAnchor, constant: 8),
             previewContainer.leadingAnchor.constraint(equalTo: rightPane.leadingAnchor, constant: 10),
@@ -237,16 +251,29 @@ final class HistoryViewController: NSViewController, NSTableViewDataSource, NSTa
     }
 
     func tableViewSelectionDidChange(_ notification: Notification) {
+        segmentedControl.selectedSegment = 0
         updatePreview()
         updateButtons()
     }
 
     // MARK: - Actions
 
+    @objc private func segmentChanged() {
+        updatePreview()
+    }
+
+    /// Returns the text for whichever segment is currently shown (cleaned or original).
+    private func displayedText(for record: TranscriptionRecord) -> String {
+        if record.originalText != nil, segmentedControl.selectedSegment == 1 {
+            return record.originalText!
+        }
+        return record.text
+    }
+
     @objc private func typeSelected() {
         let row = tableView.selectedRow
         guard row >= 0, history.records.indices.contains(row) else { return }
-        let text = history.records[row].text
+        let text = displayedText(for: history.records[row])
         view.window?.close()
         NotificationCenter.default.post(name: .retypeTranscription, object: text)
     }
@@ -254,8 +281,9 @@ final class HistoryViewController: NSViewController, NSTableViewDataSource, NSTa
     @objc private func copySelected() {
         let row = tableView.selectedRow
         guard row >= 0, history.records.indices.contains(row) else { return }
+        let text = displayedText(for: history.records[row])
         NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(history.records[row].text, forType: .string)
+        NSPasteboard.general.setString(text, forType: .string)
     }
 
     @objc private func deleteSelected() {
@@ -278,8 +306,14 @@ final class HistoryViewController: NSViewController, NSTableViewDataSource, NSTa
     private func updatePreview() {
         let row = tableView.selectedRow
         if row >= 0, history.records.indices.contains(row) {
-            previewText.string = history.records[row].text
+            let record = history.records[row]
+            let hasOriginal = record.originalText != nil
+            segmentedControl.isHidden = !hasOriginal
+            previewTitle.isHidden = hasOriginal
+            previewText.string = displayedText(for: record)
         } else {
+            segmentedControl.isHidden = true
+            previewTitle.isHidden = false
             previewText.string = history.records.isEmpty ? "No transcriptions yet." : ""
         }
     }

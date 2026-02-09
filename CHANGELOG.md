@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.5 - 2026-02-08
+- Show original and cleaned text in transcription history (toggle between versions).
+- LLM text cleanup enabled by default.
+- Download and load cleanup LLM at startup (removed manual download button).
+- Improved startup with descriptive progress messages and parallel model downloads.
+- Fix push-to-talk race condition on rapid press/release cycles.
+- Removed redundant metallib signing and `--deep` codesign flag.
+
 ## 0.1.4 - 2026-02-08
 - Microphone selection submenu in the menu bar for quick switching.
 - `scripts/setup.sh` interactive bootstrap script for new contributors.

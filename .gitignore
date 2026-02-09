@@ -7,16 +7,13 @@
 
 # Env
 .env
-.venv/
 
-# Python
-__pycache__/
-*.pyc
-
-# Node
-node_modules/
+# Swift / SPM
+.build/
+.swiftpm/xcode/xcuserdata/
+DerivedData/
+xcuserdata/
+*.dSYM
 
 # Build outputs
 build/
-dist/
-.build/

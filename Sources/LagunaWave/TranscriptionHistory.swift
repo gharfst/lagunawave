@@ -2,12 +2,14 @@ import Foundation
 
 struct TranscriptionRecord: Codable {
     let id: UUID
-    let text: String
+    let text: String          // The text that was typed (cleaned if cleanup was on)
+    let originalText: String? // Raw transcription before cleanup (nil if cleanup was off)
     let date: Date
 
-    init(text: String, date: Date = Date()) {
+    init(text: String, originalText: String? = nil, date: Date = Date()) {
         self.id = UUID()
         self.text = text
+        self.originalText = originalText
         self.date = date
     }
 }
@@ -26,8 +28,8 @@ final class TranscriptionHistory {
         load()
     }
 
-    func append(_ text: String) {
-        let record = TranscriptionRecord(text: text)
+    func append(_ text: String, originalText: String? = nil) {
+        let record = TranscriptionRecord(text: text, originalText: originalText)
         records.insert(record, at: 0)
         if records.count > maxItems {
             records = Array(records.prefix(maxItems))

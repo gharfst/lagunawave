@@ -34,6 +34,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
     private var escapeMonitor: Any?
     private var retypeClickMonitor: Any?
     private var retypeEscapeMonitor: Any?
+    private var pendingFinish: DispatchWorkItem?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         Log.general("Launched LagunaWave")
@@ -119,28 +120,62 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
             }
         }
 
-        // Step 3: Download both models, then load the selected one
+        // Step 3: Download speech models (v2 + v3 in parallel)
         await MainActor.run {
-            self.overlay.showTranscribing(loading: true)
+            self.overlay.showProgress("Downloading speech models\u{2026}")
         }
         do {
             try await transcriber.downloadAll()
-            try await transcriber.prepare()
-            Log.general("Setup: models ready")
-            await MainActor.run {
-                self.overlay.showMessage("Ready")
-                self.overlay.hide(after: 1.5)
-            }
         } catch {
-            Log.general("Setup: model download failed: \(error.localizedDescription)")
+            Log.general("Setup: ASR model download failed: \(error.localizedDescription)")
             await MainActor.run {
-                self.overlay.showMessage("Model download failed")
+                self.overlay.showMessage("Speech model download failed")
                 self.overlay.hide(after: 2.0)
             }
+            return
+        }
+
+        // Step 4: Load the selected speech model into memory
+        await MainActor.run {
+            self.overlay.showProgress("Loading speech model\u{2026}")
+        }
+        do {
+            try await transcriber.prepare()
+            Log.general("Setup: ASR models ready")
+        } catch {
+            Log.general("Setup: ASR model load failed: \(error.localizedDescription)")
+            await MainActor.run {
+                self.overlay.showMessage("Speech model load failed")
+                self.overlay.hide(after: 2.0)
+            }
+            return
+        }
+
+        // Step 5: Download and load the cleanup LLM
+        await MainActor.run {
+            self.overlay.showProgress("Downloading cleanup model\u{2026}")
+        }
+        do {
+            try await cleanupEngine.prepare { [weak self] (progress: Progress) in
+                let pct = Int(progress.fractionCompleted * 100)
+                Task { @MainActor in
+                    self?.overlay.showProgress("Downloading cleanup model\u{2026} \(pct)%")
+                }
+            }
+            Log.general("Setup: cleanup model ready")
+        } catch {
+            Log.general("Setup: cleanup model failed: \(error.localizedDescription)")
+        }
+
+        await MainActor.run {
+            self.overlay.showMessage("Ready")
+            self.overlay.hide(after: 1.5)
         }
     }
 
     func hotKeyPressed(kind: HotKeyKind) {
+        pendingFinish?.cancel()
+        pendingFinish = nil
         if isListening {
             if listeningMode == .toggle, kind == .toggle {
                 Log.general("Toggle hotkey pressed: stop listening")
@@ -160,9 +195,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
     func hotKeyReleased(kind: HotKeyKind) {
         guard isListening, listeningMode == .pushToTalk, kind == .pushToTalk else { return }
         Log.general("Push-to-talk released: stop listening")
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+        let workItem = DispatchWorkItem { [weak self] in
             self?.finishListening(reason: "push-release")
         }
+        pendingFinish = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2, execute: workItem)
     }
 
     private func startListening(mode: ListeningMode) {
@@ -298,7 +335,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
                 }
 
                 await MainActor.run {
-                    TranscriptionHistory.shared.append(textToType)
+                    if cleanupEnabled, textToType != trimmed {
+                        TranscriptionHistory.shared.append(textToType, originalText: trimmed)
+                    } else {
+                        TranscriptionHistory.shared.append(textToType)
+                    }
                 }
                 let trusted = self.typer.isTrusted()
                 Log.general("Accessibility trusted=\(trusted)")

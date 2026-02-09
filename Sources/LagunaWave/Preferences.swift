@@ -35,7 +35,7 @@ final class Preferences {
             Keys.typingDelayMs: 15,
             Keys.typingMethod: TypingMethod.simulateTyping.rawValue,
             Keys.asrModelVersion: "v2",
-            Keys.llmCleanupEnabled: false,
+            Keys.llmCleanupEnabled: true,
             Keys.llmCleanupModel: "standard",
             Keys.vdiPatterns: Self.defaultVDIPatterns,
         ])

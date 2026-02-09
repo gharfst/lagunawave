@@ -149,6 +149,10 @@ final class OverlayPanel {
         updateUI(text: "Typing…", waveform: false, spinner: false, dotColor: .systemBlue)
     }
 
+    func showProgress(_ text: String) {
+        updateUI(text: text, waveform: false, spinner: true)
+    }
+
     func showMessage(_ text: String) {
         updateUI(text: text, waveform: false, spinner: false)
     }

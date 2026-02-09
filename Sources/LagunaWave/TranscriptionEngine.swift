@@ -17,10 +17,10 @@ actor TranscriptionEngine {
     }
 
     func downloadAll() async throws {
-        Log.transcription("TranscriptionEngine: downloading v2 model")
-        try await AsrModels.download(version: .v2)
-        Log.transcription("TranscriptionEngine: downloading v3 model")
-        try await AsrModels.download(version: .v3)
+        Log.transcription("TranscriptionEngine: downloading v2 and v3 models")
+        async let v2 = AsrModels.download(version: .v2)
+        async let v3 = AsrModels.download(version: .v3)
+        _ = try await (v2, v3)
         Log.transcription("TranscriptionEngine: both models downloaded")
     }
 

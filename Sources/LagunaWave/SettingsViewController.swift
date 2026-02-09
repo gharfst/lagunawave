@@ -24,9 +24,6 @@ final class SettingsViewController: NSTabViewController {
     private let cleanupToggle = NSButton(checkboxWithTitle: "Clean up dictated text with AI", target: nil, action: nil)
     private let cleanupModelPopUp = NSPopUpButton(frame: .zero, pullsDown: false)
     private let cleanupDescription = NSTextField(wrappingLabelWithString: "Fixes punctuation, capitalization, filler words, and homophones. Runs locally on-device.")
-    private let cleanupDownloadButton = NSButton(title: "Download Model", target: nil, action: nil)
-    private let cleanupProgress = NSProgressIndicator()
-    private let cleanupStatusLabel = NSTextField(labelWithString: "")
     private var devices: [AudioInputDevice] = []
 
     override func viewDidLoad() {
@@ -160,22 +157,6 @@ final class SettingsViewController: NSTabViewController {
         cleanupDescription.maximumNumberOfLines = 3
         cleanupDescription.lineBreakMode = .byWordWrapping
 
-        cleanupProgress.style = .bar
-        cleanupProgress.isIndeterminate = false
-        cleanupProgress.minValue = 0
-        cleanupProgress.maxValue = 1
-        cleanupProgress.isHidden = true
-        cleanupProgress.translatesAutoresizingMaskIntoConstraints = false
-
-        cleanupStatusLabel.font = NSFont.systemFont(ofSize: 11)
-        cleanupStatusLabel.textColor = .secondaryLabelColor
-        cleanupStatusLabel.isHidden = true
-
-        let downloadRow = NSStackView(views: [cleanupDownloadButton, cleanupProgress, cleanupStatusLabel])
-        downloadRow.orientation = .horizontal
-        downloadRow.alignment = .centerY
-        downloadRow.spacing = 8
-
         let stack = NSStackView(views: [
             privacyNote,
             spacer(height: 12),
@@ -187,14 +168,8 @@ final class SettingsViewController: NSTabViewController {
             cleanupToggle,
             cleanupModelPopUp,
             cleanupDescription,
-            spacer(height: 6),
-            downloadRow
         ])
         configureStack(stack)
-
-        NSLayoutConstraint.activate([
-            cleanupProgress.widthAnchor.constraint(equalToConstant: 160)
-        ])
 
         return wrapStack(stack)
     }
@@ -299,9 +274,6 @@ final class SettingsViewController: NSTabViewController {
         cleanupModelPopUp.target = self
         cleanupModelPopUp.action = #selector(cleanupModelChanged)
 
-        cleanupDownloadButton.bezelStyle = .rounded
-        cleanupDownloadButton.target = self
-        cleanupDownloadButton.action = #selector(cleanupDownloadClicked)
     }
 
     // MARK: - Load Preferences
@@ -338,7 +310,7 @@ final class SettingsViewController: NSTabViewController {
 
         cleanupToggle.state = Preferences.shared.llmCleanupEnabled ? .on : .off
         cleanupModelPopUp.selectItem(at: Preferences.shared.llmCleanupModel == "lightweight" ? 1 : 0)
-        updateCleanupControlsEnabled()
+        cleanupModelPopUp.isEnabled = cleanupToggle.state == .on
     }
 
     private func reloadDevices() {
@@ -426,49 +398,13 @@ final class SettingsViewController: NSTabViewController {
 
     @objc private func cleanupToggleChanged() {
         Preferences.shared.llmCleanupEnabled = (cleanupToggle.state == .on)
-        updateCleanupControlsEnabled()
+        cleanupModelPopUp.isEnabled = cleanupToggle.state == .on
     }
 
     @objc private func cleanupModelChanged() {
         let model = cleanupModelPopUp.indexOfSelectedItem == 1 ? "lightweight" : "standard"
         Preferences.shared.llmCleanupModel = model
-        cleanupStatusLabel.isHidden = true
         NotificationCenter.default.post(name: .llmCleanupModelChanged, object: nil)
-    }
-
-    @objc private func cleanupDownloadClicked() {
-        cleanupDownloadButton.isEnabled = false
-        cleanupProgress.isHidden = false
-        cleanupProgress.doubleValue = 0
-        cleanupStatusLabel.stringValue = "Downloading\u{2026}"
-        cleanupStatusLabel.isHidden = false
-
-        Task {
-            do {
-                try await TextCleanupEngine.shared.prepare { [weak self] progress in
-                    Task { @MainActor in
-                        self?.cleanupProgress.doubleValue = progress.fractionCompleted
-                    }
-                }
-                await MainActor.run {
-                    self.cleanupProgress.isHidden = true
-                    self.cleanupStatusLabel.stringValue = "Model ready"
-                    self.cleanupDownloadButton.isEnabled = true
-                }
-            } catch {
-                await MainActor.run {
-                    self.cleanupProgress.isHidden = true
-                    self.cleanupStatusLabel.stringValue = "Download failed"
-                    self.cleanupDownloadButton.isEnabled = true
-                }
-            }
-        }
-    }
-
-    private func updateCleanupControlsEnabled() {
-        let enabled = cleanupToggle.state == .on
-        cleanupModelPopUp.isEnabled = enabled
-        cleanupDownloadButton.isEnabled = enabled
     }
 
     @objc private func openAccessibilitySettings() {
