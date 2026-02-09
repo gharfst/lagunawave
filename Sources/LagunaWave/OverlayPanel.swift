@@ -25,6 +25,7 @@ final class OverlayPanel {
     private let stateDot: NSView
     private let spinner: NSProgressIndicator
     private var hideWorkItem: DispatchWorkItem?
+    private var dismissWorkItem: DispatchWorkItem?
     private var isShowing = false
 
     init() {
@@ -198,6 +199,8 @@ final class OverlayPanel {
     }
 
     private func present() {
+        dismissWorkItem?.cancel()
+        dismissWorkItem = nil
         if isShowing {
             panel.orderFrontRegardless()
             return
@@ -212,10 +215,13 @@ final class OverlayPanel {
         guard isShowing else { return }
         isShowing = false
         animateOut()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { [weak self] in
+        let workItem = DispatchWorkItem { [weak self] in
             self?.panel.orderOut(nil)
             self?.panel.alphaValue = 1
+            self?.dismissWorkItem = nil
         }
+        dismissWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12, execute: workItem)
     }
 
     private func layoutAndPosition() {
