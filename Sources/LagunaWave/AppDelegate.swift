@@ -808,8 +808,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
             return
         }
 
-        let clickPoint = CGPoint(x: bounds.minX + bounds.width * 0.8, y: bounds.minY + 12)
-        Log.general("Focus restore: VDI click at (\(Int(clickPoint.x)),\(Int(clickPoint.y))) size \(Int(bounds.width))x\(Int(bounds.height))")
+        // Detect full-screen: compare window bounds to the screen that contains it.
+        // Full-screen windows fill the entire display (no macOS title bar).
+        // Windowed VDI has a ~28px macOS title bar we must click below.
+        let windowCenter = CGPoint(x: bounds.midX, y: bounds.midY)
+        let screenFrame: CGRect? = await MainActor.run {
+            let screen = NSScreen.screens.first(where: { $0.frame.contains(windowCenter) }) ?? NSScreen.main
+            return screen?.frame
+        }
+        let isFullScreen: Bool
+        if let screenFrame {
+            isFullScreen = bounds.width >= screenFrame.width - 2
+                        && bounds.height >= screenFrame.height - 2
+        } else {
+            isFullScreen = false
+        }
+        let yOffset: CGFloat = isFullScreen ? 12 : 38
+        let clickPoint = CGPoint(x: bounds.minX + bounds.width * 0.8, y: bounds.minY + yOffset)
+        Log.general("Focus restore: VDI click at (\(Int(clickPoint.x)),\(Int(clickPoint.y))) size \(Int(bounds.width))x\(Int(bounds.height)) fullScreen=\(isFullScreen)")
 
         if let mouseMove = CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: clickPoint, mouseButton: .left) {
             mouseMove.post(tap: .cghidEventTap)
