@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.7 - 2026-02-09
+- Smarter VDI focus click: detect full-screen vs windowed mode to avoid clicking the macOS title bar.
+
 ## 0.1.6 - 2026-02-09
 - Optional auto-Enter after typing: sends Return key after a short pause when dictation finishes (off by default).
 - Menu bar quick toggles for AI text cleanup and auto-Enter.
