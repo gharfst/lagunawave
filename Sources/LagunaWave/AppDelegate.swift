@@ -59,6 +59,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
 
         NotificationCenter.default.addObserver(self, selector: #selector(pushHotKeyChanged(_:)), name: .pushHotKeyChanged, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(toggleHotKeyChanged(_:)), name: .toggleHotKeyChanged, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(hotKeyRecordingDidStart), name: .hotKeyRecordingDidStart, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(hotKeyRecordingDidEnd), name: .hotKeyRecordingDidEnd, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(inputDeviceChanged(_:)), name: .inputDeviceChanged, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(handleRetypeTranscription(_:)), name: .retypeTranscription, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(handleModelChanged), name: .modelChanged, object: nil)
@@ -624,6 +626,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
     @objc private func toggleHotKeyChanged(_ note: Notification) {
         guard let hotKey = note.object as? HotKey else { return }
         hotKeyManager?.updateHotKey(kind: .toggle, hotKey: hotKey)
+    }
+
+    @objc private func hotKeyRecordingDidStart() {
+        hotKeyManager?.unregister()
+    }
+
+    @objc private func hotKeyRecordingDidEnd() {
+        hotKeyManager?.register(hotKeys: [
+            .pushToTalk: Preferences.shared.pushToTalkHotKey,
+            .toggle: Preferences.shared.toggleHotKey
+        ])
     }
 
     private func playFeedback(start: Bool) {

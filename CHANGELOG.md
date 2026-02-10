@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.2 - 2026-02-10
+- Fix crash when recording a hotkey that conflicts with an already-registered hotkey. Global hotkeys are now paused while the recorder is active.
+- Duplicate hotkey detection: assigning the same key combo to both push-to-talk and toggle dictation now shows an error and reverts.
+
 ## 0.2.1 - 2026-02-10
 - VDI targets now always use Simulate Keypresses regardless of the user's typing method setting (paste and Unicode injection do not work through VDI clients).
 

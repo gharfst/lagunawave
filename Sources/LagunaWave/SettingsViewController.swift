@@ -295,13 +295,21 @@ final class SettingsViewController: NSTabViewController {
     private func loadPreferences() {
         reloadDevices()
 
-        pushHotKeyRecorder.onHotKeyChange = { hotKey in
+        pushHotKeyRecorder.onHotKeyChange = { [weak self] hotKey in
+            if hotKey == Preferences.shared.toggleHotKey {
+                self?.pushHotKeyRecorder.showConflict("Already used by toggle dictation", revertTo: Preferences.shared.pushToTalkHotKey)
+                return
+            }
             Preferences.shared.pushToTalkHotKey = hotKey
             NotificationCenter.default.post(name: .pushHotKeyChanged, object: hotKey)
         }
         pushHotKeyRecorder.setHotKey(Preferences.shared.pushToTalkHotKey)
 
-        toggleHotKeyRecorder.onHotKeyChange = { hotKey in
+        toggleHotKeyRecorder.onHotKeyChange = { [weak self] hotKey in
+            if hotKey == Preferences.shared.pushToTalkHotKey {
+                self?.toggleHotKeyRecorder.showConflict("Already used by push-to-talk", revertTo: Preferences.shared.toggleHotKey)
+                return
+            }
             Preferences.shared.toggleHotKey = hotKey
             NotificationCenter.default.post(name: .toggleHotKeyChanged, object: hotKey)
         }

@@ -8,4 +8,6 @@ extension Notification.Name {
     static let historyDidChange = Notification.Name("LagunaWave.HistoryDidChange")
     static let modelChanged = Notification.Name("LagunaWave.ModelChanged")
     static let llmCleanupModelChanged = Notification.Name("LagunaWave.LLMCleanupModelChanged")
+    static let hotKeyRecordingDidStart = Notification.Name("LagunaWave.HotKeyRecordingDidStart")
+    static let hotKeyRecordingDidEnd = Notification.Name("LagunaWave.HotKeyRecordingDidEnd")
 }

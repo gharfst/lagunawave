@@ -47,11 +47,24 @@ final class HotKeyRecorderView: NSView {
         label.stringValue = hotKey.displayString
     }
 
+    func showConflict(_ message: String, revertTo hotKey: HotKey) {
+        NSSound.beep()
+        label.stringValue = message
+        label.textColor = .systemRed
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
+            self?.label.textColor = .secondaryLabelColor
+            self?.setHotKey(hotKey)
+        }
+    }
+
     @objc private func toggleRecording() {
         isRecording.toggle()
         updateUI()
         if isRecording {
+            NotificationCenter.default.post(name: .hotKeyRecordingDidStart, object: nil)
             window?.makeFirstResponder(self)
+        } else {
+            NotificationCenter.default.post(name: .hotKeyRecordingDidEnd, object: nil)
         }
     }
 
@@ -80,9 +93,19 @@ final class HotKeyRecorderView: NSView {
         }
         let hotKey = HotKey(keyCode: keyCode, modifiers: modifiers)
         isRecording = false
-        setHotKey(hotKey)
         updateUI()
+        setHotKey(hotKey)
+        NotificationCenter.default.post(name: .hotKeyRecordingDidEnd, object: nil)
         onHotKeyChange?(hotKey)
+    }
+
+    override func resignFirstResponder() -> Bool {
+        if isRecording {
+            isRecording = false
+            updateUI()
+            NotificationCenter.default.post(name: .hotKeyRecordingDidEnd, object: nil)
+        }
+        return super.resignFirstResponder()
     }
 }
 
