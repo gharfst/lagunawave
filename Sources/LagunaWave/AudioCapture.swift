@@ -39,8 +39,13 @@ final class AudioCapture: @unchecked Sendable {
     }
 
     func start() -> Bool {
-        if isRunning { return true }
+        if isRunning {
+            Log.audio("AudioCapture start: already running")
+            return true
+        }
+        Log.audio("AudioCapture start: starting engine")
         startEngine()
+        Log.audio("AudioCapture start: engine started, isRunning=\(isRunning)")
         return isRunning
     }
 
@@ -64,21 +69,29 @@ final class AudioCapture: @unchecked Sendable {
 
     private func startEngine() {
         guard !isRunning else { return }
+        Log.audio("AudioCapture startEngine: getting input node")
         let input = engine.inputNode
         setAudioUnitDeviceIfNeeded(input)
         let format = input.outputFormat(forBus: 0)
-        Log.audio("AudioCapture engine start: inputRate=\(format.sampleRate) channels=\(format.channelCount)")
+        Log.audio("AudioCapture startEngine: inputRate=\(format.sampleRate) channels=\(format.channelCount)")
+        guard format.sampleRate > 0, format.channelCount > 0 else {
+            Log.audio("AudioCapture startEngine: degenerate format, aborting")
+            return
+        }
         converter = AVAudioConverter(from: format, to: outputFormat)
         queue.sync { samples.removeAll(keepingCapacity: true) }
 
+        Log.audio("AudioCapture startEngine: installing tap")
         input.installTap(onBus: 0, bufferSize: 1024, format: format, block: makeTapHandler(format: format))
         do {
             engine.prepare()
+            Log.audio("AudioCapture startEngine: engine prepared, starting")
             try engine.start()
             isRunning = true
+            Log.audio("AudioCapture startEngine: engine running")
         } catch {
             isRunning = false
-            Log.audio("AudioCapture engine start failed: \(error.localizedDescription)")
+            Log.audio("AudioCapture startEngine failed: \(error.localizedDescription)")
         }
     }
 

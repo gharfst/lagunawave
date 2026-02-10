@@ -179,6 +179,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
     }
 
     func hotKeyPressed(kind: HotKeyKind) {
+        Log.general("HotKey pressed: \(kind) isListening=\(isListening)")
         pendingFinish?.cancel()
         pendingFinish = nil
         if isListening {
@@ -231,7 +232,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
     }
 
     private func beginListening(mode: ListeningMode) {
-        guard !isListening else { return }
+        guard !isListening else {
+            Log.general("beginListening: already listening, skipping")
+            return
+        }
+        Log.general("beginListening: mode=\(mode)")
         captureFocusedWindowBounds()
         isListening = true
         listeningMode = mode
@@ -240,13 +245,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
             lastSpeechTime = now
             toggleStartTime = now
             let toggleKey = Preferences.shared.toggleHotKey.displayString
+            Log.general("beginListening: showing overlay (toggle)")
             overlay.showListening(hint: "\(toggleKey) stop · Esc cancel")
             installEscapeMonitor()
         } else {
+            Log.general("beginListening: showing overlay (push-to-talk)")
             overlay.showListening(hint: "Release to type")
         }
+        Log.general("beginListening: starting audio capture")
         let started = audio.start()
         if !started {
+            Log.general("beginListening: audio.start() failed")
             isListening = false
             listeningMode = nil
             removeEscapeMonitor()
@@ -254,6 +263,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
             overlay.hide(after: 1.2)
             return
         }
+        Log.general("beginListening: audio capture started successfully")
         playFeedback(start: true)
     }
 

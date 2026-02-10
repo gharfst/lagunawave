@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.3 - 2026-02-10
+- Added detailed logging around hotkey press, overlay show, and audio engine startup to diagnose push-to-talk crashes.
+- Guard against degenerate audio format (0 Hz / 0 channels) during engine start that could cause a crash.
+
 ## 0.2.2 - 2026-02-10
 - Fix crash when recording a hotkey that conflicts with an already-registered hotkey. Global hotkeys are now paused while the recorder is active.
 - Duplicate hotkey detection: assigning the same key combo to both push-to-talk and toggle dictation now shows an error and reverts.
