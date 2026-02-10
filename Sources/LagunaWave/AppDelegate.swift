@@ -823,7 +823,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
         } else {
             isFullScreen = false
         }
-        let xFraction: CGFloat = isFullScreen ? 0.8 : 0.65
+        let xFraction: CGFloat = 0.65
         let yOffset: CGFloat = isFullScreen ? 12 : 38
         let clickPoint = CGPoint(x: bounds.minX + bounds.width * xFraction, y: bounds.minY + yOffset)
         Log.general("Focus restore: VDI click at (\(Int(clickPoint.x)),\(Int(clickPoint.y))) size \(Int(bounds.width))x\(Int(bounds.height)) fullScreen=\(isFullScreen)")
