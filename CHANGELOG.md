@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.0 - 2026-02-09
+- Faster typing speed presets: Fast 10ms, Natural 20ms, Relaxed 40ms (down from 15/35/65ms).
+- Reduced sentence boundary pause from 150ms to 100ms.
+
 ## 0.1.9 - 2026-02-09
 - Smarter VDI focus click: detect full-screen vs windowed mode to avoid clicking the macOS title bar.
 - VDI click position adjusted to 65% across the window to better target the session area.

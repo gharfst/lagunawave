@@ -13,7 +13,7 @@ final class SettingsViewController: NSTabViewController {
     private let typingSpeedLabel = NSTextField(labelWithString: "Typing speed")
     private let typingSpeedControl = NSSegmentedControl()
     private let speedLabels = ["Instant", "Fast", "Natural", "Relaxed"]
-    private let speedValues = [0, 15, 35, 65]
+    private let speedValues = [0, 10, 20, 40]
     private let vdiPatternsLabel = NSTextField(labelWithString: "VDI app keywords")
     private let vdiPatternsField = NSTextField()
     private let vdiPatternsDescription = NSTextField(wrappingLabelWithString: "Comma-separated. Apps matching these get a click to restore keyboard capture.")

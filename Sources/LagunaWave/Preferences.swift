@@ -33,7 +33,7 @@ final class Preferences {
         defaults.register(defaults: [
             Keys.audioCueEnabled: true,
             Keys.hapticCueEnabled: true,
-            Keys.typingDelayMs: 15,
+            Keys.typingDelayMs: 10,
             Keys.typingMethod: TypingMethod.simulateTyping.rawValue,
             Keys.asrModelVersion: "v2",
             Keys.llmCleanupEnabled: true,

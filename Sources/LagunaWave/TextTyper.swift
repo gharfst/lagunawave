@@ -6,7 +6,7 @@ import os
 // @unchecked Sendable: all mutable state (cancelledLock) is behind
 // OSAllocatedUnfairLock. All other properties are immutable or static.
 final class TextTyper: @unchecked Sendable {
-    private let punctuationDelayMs = 150
+    private let punctuationDelayMs = 100
     private let cancelledLock = OSAllocatedUnfairLock(initialState: false)
 
     var isCancelled: Bool {
