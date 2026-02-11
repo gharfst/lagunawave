@@ -26,6 +26,8 @@ final class SettingsViewController: NSTabViewController {
     private let cleanupDescription = NSTextField(wrappingLabelWithString: "Fixes punctuation, capitalization, filler words, and homophones. Runs locally on-device.")
     private let autoEnterToggle = NSButton(checkboxWithTitle: "Send Enter key after typing", target: nil, action: nil)
     private let autoEnterDescription = NSTextField(wrappingLabelWithString: "Automatically presses Return after dictated text is typed.")
+    private let lowercaseStartToggle = NSButton(checkboxWithTitle: "Lowercase start", target: nil, action: nil)
+    private let lowercaseStartDescription = NSTextField(wrappingLabelWithString: "Start dictated text with a lowercase letter. Useful when continuing a sentence.")
     private var devices: [AudioInputDevice] = []
 
     override func viewDidLoad() {
@@ -122,6 +124,11 @@ final class SettingsViewController: NSTabViewController {
         autoEnterDescription.maximumNumberOfLines = 2
         autoEnterDescription.lineBreakMode = .byWordWrapping
 
+        lowercaseStartDescription.font = NSFont.systemFont(ofSize: 11)
+        lowercaseStartDescription.textColor = .secondaryLabelColor
+        lowercaseStartDescription.maximumNumberOfLines = 2
+        lowercaseStartDescription.lineBreakMode = .byWordWrapping
+
         let stack = NSStackView(views: [
             typingMethodLabel,
             typingMethodPopUp,
@@ -130,6 +137,9 @@ final class SettingsViewController: NSTabViewController {
             typingSpeedLabel,
             typingSpeedControl,
             spacer(height: 16),
+            lowercaseStartToggle,
+            lowercaseStartDescription,
+            spacer(height: 12),
             autoEnterToggle,
             autoEnterDescription,
             spacer(height: 16),
@@ -276,6 +286,9 @@ final class SettingsViewController: NSTabViewController {
         autoEnterToggle.target = self
         autoEnterToggle.action = #selector(autoEnterChanged)
 
+        lowercaseStartToggle.target = self
+        lowercaseStartToggle.action = #selector(lowercaseStartChanged)
+
         cleanupToggle.target = self
         cleanupToggle.action = #selector(cleanupToggleChanged)
 
@@ -329,6 +342,7 @@ final class SettingsViewController: NSTabViewController {
             .min(by: { abs($0.element - savedDelay) < abs($1.element - savedDelay) })?.offset ?? 2
 
         autoEnterToggle.state = Preferences.shared.autoEnterEnabled ? .on : .off
+        lowercaseStartToggle.state = Preferences.shared.lowercaseStartEnabled ? .on : .off
 
         vdiPatternsField.stringValue = Preferences.shared.vdiPatterns
 
@@ -426,6 +440,10 @@ final class SettingsViewController: NSTabViewController {
 
     @objc private func autoEnterChanged() {
         Preferences.shared.autoEnterEnabled = (autoEnterToggle.state == .on)
+    }
+
+    @objc private func lowercaseStartChanged() {
+        Preferences.shared.lowercaseStartEnabled = (lowercaseStartToggle.state == .on)
     }
 
     @objc private func cleanupToggleChanged() {

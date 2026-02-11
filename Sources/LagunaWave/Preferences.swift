@@ -25,6 +25,7 @@ final class Preferences {
         static let llmCleanupEnabled = "llmCleanupEnabled"
         static let llmCleanupModel = "llmCleanupModel"
         static let autoEnterEnabled = "autoEnterEnabled"
+        static let lowercaseStartEnabled = "lowercaseStartEnabled"
     }
 
     static let defaultVDIPatterns = "vmware, horizon, citrix, omnissa, remote desktop, workspaces, parallels, xen"
@@ -104,6 +105,11 @@ final class Preferences {
         set { defaults.set(newValue, forKey: Keys.autoEnterEnabled) }
     }
 
+    var lowercaseStartEnabled: Bool {
+        get { defaults.bool(forKey: Keys.lowercaseStartEnabled) }
+        set { defaults.set(newValue, forKey: Keys.lowercaseStartEnabled) }
+    }
+
     var vdiPatterns: String {
         get { defaults.string(forKey: Keys.vdiPatterns) ?? Self.defaultVDIPatterns }
         set { defaults.set(newValue, forKey: Keys.vdiPatterns) }
@@ -122,6 +128,7 @@ final class Preferences {
         defaults.removeObject(forKey: Keys.llmCleanupEnabled)
         defaults.removeObject(forKey: Keys.llmCleanupModel)
         defaults.removeObject(forKey: Keys.autoEnterEnabled)
+        defaults.removeObject(forKey: Keys.lowercaseStartEnabled)
     }
 
     func isVDIApp(bundleID: String?, name: String?) -> Bool {

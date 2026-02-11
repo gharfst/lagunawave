@@ -37,6 +37,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
     private var pendingFinish: DispatchWorkItem?
     private var typingEscapeMonitor: Any?
     private var autoEnterMenuItem: NSMenuItem?
+    private var lowercaseStartMenuItem: NSMenuItem?
     private var cleanupMenuItem: NSMenuItem?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -345,7 +346,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
                     return
                 }
 
-                let textToType: String
+                var textToType: String
                 let cleanupEnabled = await MainActor.run { Preferences.shared.llmCleanupEnabled }
                 if cleanupEnabled {
                     let ready = await self.cleanupEngine.isReady()
@@ -359,6 +360,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
                     }
                 } else {
                     textToType = trimmed
+                }
+
+                let lowercaseStart = await MainActor.run { Preferences.shared.lowercaseStartEnabled }
+                if lowercaseStart, let first = textToType.first, first.isUppercase {
+                    textToType = textToType.prefix(1).lowercased() + textToType.dropFirst()
                 }
 
                 await MainActor.run {
@@ -500,6 +506,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
         menu.addItem(cleanupItem)
         cleanupMenuItem = cleanupItem
 
+        let lcStartItem = NSMenuItem(title: "Lowercase Start", action: #selector(toggleLowercaseStart), keyEquivalent: "")
+        lcStartItem.target = self
+        lcStartItem.state = Preferences.shared.lowercaseStartEnabled ? .on : .off
+        menu.addItem(lcStartItem)
+        lowercaseStartMenuItem = lcStartItem
+
         let enterItem = NSMenuItem(title: "Send Enter After Typing", action: #selector(toggleAutoEnter), keyEquivalent: "")
         enterItem.target = self
         enterItem.state = Preferences.shared.autoEnterEnabled ? .on : .off
@@ -531,6 +543,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotKeyDelegate, NSMenu
         let newValue = !Preferences.shared.autoEnterEnabled
         Preferences.shared.autoEnterEnabled = newValue
         autoEnterMenuItem?.state = newValue ? .on : .off
+    }
+
+    @objc private func toggleLowercaseStart() {
+        let newValue = !Preferences.shared.lowercaseStartEnabled
+        Preferences.shared.lowercaseStartEnabled = newValue
+        lowercaseStartMenuItem?.state = newValue ? .on : .off
     }
 
     @objc private func selectMicrophone(_ sender: NSMenuItem) {

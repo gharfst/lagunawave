@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.7 - 2026-02-11
+- New "Lowercase start" option: lowercases the first character of dictated text before typing. Useful when continuing a sentence mid-stream. Available as a menu bar toggle, and in Settings → Typing. Off by default.
+
 ## 0.2.6 - 2026-02-10
 - Remove AVAudioEngine configuration change observer — the root cause of push-to-talk crashes on systems with virtual audio devices (e.g. Zoom).
 - The observer was attempting to recover mid-recording device switches, an edge case not worth the instability it introduced.
